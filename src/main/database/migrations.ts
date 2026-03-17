@@ -11,18 +11,12 @@
 
 import Database from 'better-sqlite3';
 import { readFileSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
+import { join } from 'path';
 
-// Get __dirname for both ESM and CommonJS
-let __dirname = '';
-if (typeof import.meta !== 'undefined' && import.meta.url) {
-  // ESM
-  const fileUrl = import.meta.url;
-  __dirname = dirname(fileUrl.replace('file://', ''));
-} else {
-  // This shouldn't happen in modern Node but keep as fallback
-  __dirname = dirname(process.argv[1] || process.cwd());
-}
+// In CJS (Electron build): __dirname is available natively
+// In ESM (vitest): __dirname is shimmed by vitest
+// We use process.cwd() as primary fallback for schema.sql discovery
+const __currentDir = typeof __dirname !== 'undefined' ? __dirname : process.cwd();
 
 /**
  * Migration version table
@@ -71,9 +65,9 @@ function recordMigration(db: Database.Database, version: number): void {
 function findSchemaPath(): string {
   const possiblePaths = [
     // Running from src directory (development)
-    join(__dirname, 'schema.sql'),
+    join(__currentDir, 'schema.sql'),
     // Running from dist directory (compiled)
-    join(__dirname, 'schema.sql'),
+    join(__currentDir, 'schema.sql'),
     // For tests that might be run from project root
     join(process.cwd(), 'src/main/database/schema.sql'),
   ];
@@ -92,7 +86,7 @@ function findSchemaPath(): string {
   ];
 
   for (const alt of alternatives) {
-    const path = join(__dirname, alt);
+    const path = join(__currentDir, alt);
     if (existsSync(path)) {
       return path;
     }

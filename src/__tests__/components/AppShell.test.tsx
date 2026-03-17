@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 // @TASK P1-S0 - AppShell layout and navigation tests
 // @SPEC docs/planning/03-user-flow.md
 import React from 'react';

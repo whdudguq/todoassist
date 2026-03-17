@@ -13,3 +13,6 @@ export { useChatStore } from './chatStore';
 
 export { useDashboardStore } from './dashboardStore';
 export type { DashboardState } from './dashboardStore';
+
+export { useStatsStore } from './statsStore';
+export type { StatsState, StatsPeriod } from './statsStore';

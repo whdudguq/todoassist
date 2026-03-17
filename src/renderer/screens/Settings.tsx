@@ -1,13 +1,14 @@
 // @TASK P5-S7 - Settings screen (3 tabs: 기본, 카테고리, 알림)
 // @SPEC docs/planning — 설정 화면
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSettingStore } from '@renderer/stores/settingStore';
 import { BasicSettings } from '@renderer/components/BasicSettings';
 import { CategoryManager } from '@renderer/components/CategoryManager';
 import { NotificationSettings } from '@renderer/components/NotificationSettings';
 import { Button } from '@renderer/components/ui/button';
 import { cn } from '@renderer/lib/cn';
-import type { Category } from '@shared/types';
+import type { Category, Setting } from '@shared/types';
+import { getApi } from '@renderer/hooks/useApi';
 
 type TabKey = '기본' | '카테고리' | '알림';
 
@@ -23,43 +24,112 @@ export function Settings() {
 
   const { updateSetting } = useSettingStore();
 
+  // ── IPC: load settings on mount ───────────────────────────
+  useEffect(() => {
+    const api = getApi();
+    if (!api) return;
+
+    const SETTING_KEYS = [
+      'userName',
+      'workHoursStart',
+      'workHoursEnd',
+      'apiKey',
+      'notificationsEnabled',
+      'encouragementInterval',
+    ] as const;
+
+    Promise.all(SETTING_KEYS.map((key) => api.settings.get(key))).then((results) => {
+      const partial: Record<string, string | boolean | number> = {};
+      (results as Array<Setting | null>).forEach((row, i) => {
+        if (!row) return;
+        const key = SETTING_KEYS[i];
+        try {
+          partial[key] = JSON.parse(row.value) as string | boolean | number;
+        } catch {
+          partial[key] = row.value;
+        }
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      useSettingStore.getState().loadSettings(partial as any);
+    }).catch(console.error);
+
+    // Load categories from DB
+    api.category.getAll().then((cats) => {
+      setCategories(cats as Category[]);
+    }).catch(console.error);
+  }, []);
+
   // ── Tab handlers ──────────────────────────────────────────
 
   function handleSave() {
-    // Persist via IPC if needed; for now just a no-op stub
-    console.log('[Settings] saved');
+    const api = getApi();
+    if (!api) return;
+
+    const store = useSettingStore.getState();
+    const entries: Array<[string, unknown]> = [
+      ['userName', store.userName],
+      ['workHoursStart', store.workHoursStart],
+      ['workHoursEnd', store.workHoursEnd],
+      ['apiKey', store.apiKey],
+      ['notificationsEnabled', store.notificationsEnabled],
+      ['encouragementInterval', store.encouragementInterval],
+    ];
+
+    Promise.all(
+      entries.map(([key, value]) => api.settings.update(key, JSON.stringify(value)))
+    ).catch(console.error);
   }
 
   // ── Category handlers ─────────────────────────────────────
 
   function handleAddCategory() {
-    const newCat: Category = {
-      id: `cat-${Date.now()}`,
-      name: '새 카테고리',
-      color: '#a1a1aa',
-      icon: '🏷️',
-      createdAt: Date.now(),
-    };
-    setCategories((prev) => [...prev, newCat]);
+    const api = getApi();
+    const input = { name: '새 카테고리', color: '#a1a1aa', icon: '🏷️' };
+    if (api) {
+      api.category.create(input).then((cat) => {
+        setCategories((prev) => [...prev, cat as Category]);
+      }).catch(console.error);
+    } else {
+      // fallback for test / non-Electron environment
+      const newCat: Category = { id: `cat-${Date.now()}`, ...input, createdAt: Date.now() };
+      setCategories((prev) => [...prev, newCat]);
+    }
   }
 
   function handleUpdateCategory(
     id: string,
     partial: Partial<Omit<Category, 'id' | 'createdAt'>>,
   ) {
-    setCategories((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, ...partial } : c)),
-    );
+    // Optimistic update
+    setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, ...partial } : c)));
+    const api = getApi();
+    if (api) {
+      api.category.update(id, partial).catch(console.error);
+    }
   }
 
   function handleDeleteCategory(id: string) {
+    // Optimistic delete
     setCategories((prev) => prev.filter((c) => c.id !== id));
+    const api = getApi();
+    if (api) {
+      api.category.delete(id).catch(console.error);
+    }
   }
 
   // ── BasicSettings callbacks ───────────────────────────────
 
   function handleTestApi() {
-    console.log('[Settings] testing API...');
+    const api = getApi();
+    if (!api) {
+      console.log('[Settings] no api in test environment');
+      return;
+    }
+    api.ai.chat('test').then(() => {
+      useSettingStore.getState().setApiValid(true);
+    }).catch(() => {
+      useSettingStore.getState().setApiValid(false);
+    });
   }
 
   function handleBackup() {
