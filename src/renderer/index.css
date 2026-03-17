@@ -1,3 +1,215 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/*
+ * TodoAssist Design System
+ * taste-skill applied: DESIGN_VARIANCE=8, MOTION_INTENSITY=6, VISUAL_DENSITY=4
+ * Font: Pretendard (KR) + system sans-serif
+ * Palette: Amber accent + Zinc neutral (NO purple, NO Inter)
+ */
+
+@theme {
+  /* ── Typography ── */
+  --font-sans: "Pretendard Variable", "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+
+  /* ── Spacing (4px base) ── */
+  --spacing-px: 1px;
+  --spacing-0: 0;
+  --spacing-0_5: 2px;
+  --spacing-1: 4px;
+  --spacing-1_5: 6px;
+  --spacing-2: 8px;
+  --spacing-2_5: 10px;
+  --spacing-3: 12px;
+  --spacing-3_5: 14px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-7: 28px;
+  --spacing-8: 32px;
+  --spacing-9: 36px;
+  --spacing-10: 40px;
+  --spacing-12: 48px;
+  --spacing-14: 56px;
+  --spacing-16: 64px;
+  --spacing-20: 80px;
+
+  /* ── Brand Colors: Amber Accent (warm, encouraging) ── */
+  --color-accent-50: oklch(0.987 0.022 85);
+  --color-accent-100: oklch(0.962 0.059 85);
+  --color-accent-200: oklch(0.924 0.12 85);
+  --color-accent-300: oklch(0.879 0.169 80);
+  --color-accent-400: oklch(0.828 0.189 74);
+  --color-accent-500: oklch(0.769 0.188 70);
+  --color-accent-600: oklch(0.666 0.179 58);
+  --color-accent-700: oklch(0.555 0.163 48);
+  --color-accent-800: oklch(0.473 0.137 46);
+  --color-accent-900: oklch(0.414 0.112 45);
+
+  /* ── Neutral: Zinc (NOT gray, NOT slate) ── */
+  --color-surface-0: oklch(1 0 0);
+  --color-surface-50: oklch(0.985 0.002 247);
+  --color-surface-100: oklch(0.967 0.003 264);
+  --color-surface-200: oklch(0.92 0.004 264);
+  --color-surface-300: oklch(0.871 0.006 264);
+  --color-surface-400: oklch(0.705 0.015 286);
+  --color-surface-500: oklch(0.553 0.016 286);
+  --color-surface-600: oklch(0.442 0.017 285);
+  --color-surface-700: oklch(0.372 0.016 260);
+  --color-surface-800: oklch(0.274 0.006 286);
+  --color-surface-900: oklch(0.21 0.006 285);
+  --color-surface-950: oklch(0.141 0.005 285);
+
+  /* ── Semantic Colors ── */
+  --color-success-50: oklch(0.982 0.018 155);
+  --color-success-400: oklch(0.723 0.191 149);
+  --color-success-500: oklch(0.648 0.2 149);
+  --color-success-600: oklch(0.532 0.175 152);
+
+  --color-warning-50: oklch(0.987 0.026 102);
+  --color-warning-400: oklch(0.852 0.199 91);
+  --color-warning-500: oklch(0.769 0.188 70);
+
+  --color-danger-50: oklch(0.971 0.013 17);
+  --color-danger-400: oklch(0.704 0.191 22);
+  --color-danger-500: oklch(0.637 0.237 25);
+  --color-danger-600: oklch(0.577 0.245 27);
+
+  /* ── Category Colors (desaturated, professional) ── */
+  --color-cat-quality: oklch(0.704 0.14 22);
+  --color-cat-report: oklch(0.723 0.12 185);
+  --color-cat-meeting: oklch(0.685 0.12 230);
+  --color-cat-email: oklch(0.76 0.11 55);
+  --color-cat-other: oklch(0.65 0.01 264);
+
+  /* ── Radii ── */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+
+  /* ── Shadows (tinted to warm zinc, not pure black) ── */
+  --shadow-sm: 0 1px 2px oklch(0.21 0.006 285 / 0.04);
+  --shadow-md: 0 4px 12px oklch(0.21 0.006 285 / 0.06);
+  --shadow-lg: 0 12px 32px -8px oklch(0.21 0.006 285 / 0.08);
+  --shadow-xl: 0 20px 40px -15px oklch(0.21 0.006 285 / 0.1);
+
+  /* ── Transitions ── */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+
+  /* ── Animation ── */
+  --animate-fade-in: fade-in var(--duration-normal) var(--ease-out-expo);
+  --animate-slide-up: slide-up var(--duration-normal) var(--ease-out-expo);
+  --animate-slide-right: slide-right var(--duration-slow) var(--ease-out-expo);
+  --animate-scale-in: scale-in var(--duration-fast) var(--ease-out-expo);
+  --animate-shimmer: shimmer 2s infinite linear;
+}
+
+/* ── Keyframes ── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-right {
+  from { opacity: 0; transform: translateX(100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ── Base Layer ── */
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-surface-50);
+    color: var(--color-surface-900);
+  }
+
+  /* Selection */
+  ::selection {
+    background-color: var(--color-accent-200);
+    color: var(--color-surface-900);
+  }
+
+  /* Scrollbar — minimal, non-intrusive */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-surface-300);
+    border-radius: var(--radius-full);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-surface-400);
+  }
+
+  /* Focus ring — accent-tinted, not browser default */
+  :focus-visible {
+    outline: 2px solid var(--color-accent-400);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+}
+
+/* ── Utility Layer ── */
+@layer utilities {
+  /* Staggered animation delay via CSS custom property */
+  .stagger-item {
+    animation: slide-up var(--duration-normal) var(--ease-out-expo) backwards;
+    animation-delay: calc(var(--index, 0) * 60ms);
+  }
+
+  /* Skeleton shimmer for loading states */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--color-surface-200) 25%,
+      var(--color-surface-100) 50%,
+      var(--color-surface-200) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite linear;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Tactile press feedback (taste-skill Rule 5) */
+  .press-feedback:active {
+    transform: translateY(1px) scale(0.98);
+  }
+
+  /* Category left-border accent */
+  .cat-border-quality { border-left-color: var(--color-cat-quality); }
+  .cat-border-report  { border-left-color: var(--color-cat-report); }
+  .cat-border-meeting { border-left-color: var(--color-cat-meeting); }
+  .cat-border-email   { border-left-color: var(--color-cat-email); }
+  .cat-border-other   { border-left-color: var(--color-cat-other); }
+}
