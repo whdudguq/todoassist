@@ -1,0 +1,55 @@
+version: "2.0"
+
+screen:
+  id: kanban
+  name: 칸반 보드
+  route: /kanban
+  layout: sidebar-main
+  description: |
+    일일 스케줄 시각화. 30분 단위 타임슬롯 그리드(08:00-17:30).
+    Eros: AI가 중요도/데드라인 기반 최적 스케줄 제안
+
+components:
+  - id: schedule_header
+    type: header-bar
+    description: |
+      날짜, 근무시간, AI 재생성/저장 버튼.
+      Eros: AI가 최적 스케줄 생성 제안.
+
+  - id: timeslot_grid
+    type: timeslot-grid
+    description: 30분 단위 타임슬롯 그리드 (08:00-17:30)
+
+  - id: task_card
+    type: draggable-card
+    description: 태스크 카드 (드래그 가능, 카테고리 색상)
+
+  - id: unscheduled_tasks
+    type: sidebar-panel
+    position: right
+    description: 스케줄 대기 중인 태스크들
+
+interactions:
+  - id: ai_schedule_flow
+    description: |
+      "AI 스케줄 제안" 클릭
+      → Claude API로 최적 배치 생성
+      → 투명 카드로 제안 표시
+      → "모두 수락" 또는 수정 가능
+
+  - id: drag_drop
+    description: |
+      드래그앤드롭 스케줄링
+      → 충돌 검사
+      → 자동 저장 또는 "저장" 버튼 활성화
+
+  - id: micro_start
+    description: |
+      "2분만 시작하기" 클릭
+      → task.status=in_progress
+      → dashboard 실시간 업데이트
+
+eros_principles:
+  - "AI 감정 안전 비서: 친절한 톤의 제안"
+  - "2분 마이크로 시작: 각 카드에 빠른 시작 버튼"
+  - "과제 자동 쪼개기: AI가 estimatedMinutes 기반 배치"

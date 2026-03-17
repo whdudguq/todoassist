@@ -1,0 +1,41 @@
+version: "2.0"
+
+screen:
+  id: statistics
+  name: 통계/리포트
+  route: /statistics
+  layout: sidebar-main
+  description: |
+    데이터 대시보드. 완료율 추이, 카테고리별 분석, AI 인사이트.
+    Eros: 누적 완료 건수 강조, AI 격려 인사이트 3-5개
+
+components:
+  - id: period_selector
+    description: 기간 선택 (이번주, 지난주, 이번달, 지난달, 커스텀)
+
+  - id: period_summary
+    description: |
+      주요 지표들: 총 완료, 완료율, 예정, 미룬 횟수, 사용 시간
+      Eros: 누적 성취 강조
+
+  - id: completion_chart
+    description: 지난 N일간 완료율 추이 라인 차트
+
+  - id: category_pie
+    description: 카테고리별 시간 분포 원형 차트
+
+  - id: deferral_bar
+    description: 요일별 미루기 횟수 막대 그래프
+
+  - id: ai_insights
+    description: |
+      AI 인사이트 3-5개 (패턴 분석, 개선 제안)
+      Eros: 격려 톤, 실행 가능한 제안
+
+  - id: detailed_tasks
+    description: 상세 태스크 리스트 (필터링 가능)
+
+eros_principles:
+  - "성취 축적: 총 완료 건수 강조"
+  - "AI 감정 안전 비서: 격려하는 인사이트"
+  - "감정 인식 넛지: 미루기 패턴 가시화"

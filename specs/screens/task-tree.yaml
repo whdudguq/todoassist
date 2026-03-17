@@ -1,0 +1,56 @@
+version: "2.0"
+
+screen:
+  id: task-tree
+  name: 태스크 트리
+  route: /tasks
+  layout: sidebar-main
+  description: |
+    계층형 태스크 전체 보기. 무한 중첩, 진행률 바, 필터/검색/정렬.
+    Eros: 오래 미뤄진 태스크에 AI가 자동 쪼개기 제안
+
+components:
+  - id: filter_bar
+    type: filter-bar
+    description: 카테고리, 중요도, 상태 필터 + 정렬 + 검색
+
+  - id: tree_view
+    type: tree
+    description: |
+      계층형 태스크 트리 (무한 중첩, 진행률 바)
+      - expand/collapse: 자식 노드 펼치기/접기
+      - progress_bar: 부모는 자식 평균 자동 계산
+      - drag_progress: 리프 노드 진행률 드래그 조정
+      - context_menu: [수정, 삭제, 서브태스크 추가, 2분만 시작]
+
+  - id: ai_split_suggestion
+    type: inline-suggestion
+    description: |
+      오래 미뤄진 태스크에 AI가 자동 쪼개기 제안.
+      Eros 원칙: 과제 자동 쪼개기
+
+  - id: action_bar
+    type: button-group
+    description: |
+      "+ 새 태스크"
+      "템플릿 저장"
+      "템플릿 불러오기"
+
+interactions:
+  - id: add_subtask_inline
+    description: 서브태스크 인라인 추가
+
+  - id: save_template
+    description: 트리 구조를 템플릿으로 저장
+
+  - id: load_template
+    description: 저장된 템플릿 불러오기
+
+  - id: ai_split_apply
+    description: AI 쪼개기 제안 적용
+
+eros_principles:
+  - "감정 인식 넛지: 미루기 패턴 감지 시 '더 작게?' 제안"
+  - "과제 자동 쪼개기: AI가 제안한 서브태스크 한 번에 적용"
+  - "2분 마이크로 시작: 각 노드에 '2분만' 버튼"
+  - "성취 축적: 진행률 절대값 추적"

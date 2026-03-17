@@ -1,0 +1,122 @@
+version: "2.0"
+
+description: |
+  공유 컴포넌트 라이브러리.
+  모든 화면에서 사용되는 UI 컴포넌트 정의.
+
+components:
+  - id: sidebar-nav
+    type: navigation
+    description: |
+      좌측 사이드바 메뉴 (permanent).
+      모든 주요 화면으로의 링크 제공.
+    items:
+      - label: Dashboard
+        route: /
+        icon: home
+      - label: Kanban
+        route: /kanban
+        icon: columns
+      - label: Task Tree
+        route: /tasks
+        icon: git-branch
+      - label: Statistics
+        route: /statistics
+        icon: bar-chart
+      - label: Settings
+        route: /settings
+        icon: settings
+
+  - id: ai-chat-toggle
+    type: button-icon
+    description: |
+      AI 비서 사이드바 열기/닫기 토글.
+      우측 상단 header에 위치.
+    icon: message-square
+    position: fixed top-right
+
+  - id: task-card
+    type: card
+    description: |
+      태스크 정보를 표시하는 카드.
+      여러 variant 지원: dashboard, kanban, tree
+
+  - id: progress-bar
+    type: progress
+    description: |
+      선형 진행률 바.
+      색상: gray(0%) → orange(25%) → yellow(50%) → green(75%) → green(100%)
+
+  - id: micro-start-button
+    type: button
+    label: "2분만 시작하기"
+    variant: primary
+    description: |
+      Eros 원칙: 시작 심리 장벽 제거.
+
+  - id: guilt-free-defer
+    type: button
+    label: "지금 안 할래요"
+    variant: ghost
+    description: |
+      Eros 원칙: 도망 가능, 죄책감 없음.
+
+  - id: badge
+    type: badge
+    description: 태그/라벨용 배지. 여러 variant.
+
+  - id: text-input
+    type: input
+    description: 단일 줄 텍스트 입력.
+
+  - id: textarea
+    type: input
+    description: 다중 줄 텍스트 입력.
+
+  - id: select
+    type: dropdown
+    description: 선택형 드롭다운.
+
+  - id: toggle
+    type: switch
+    description: ON/OFF 토글 스위치.
+
+  - id: modal
+    type: overlay
+    description: 모달 다이얼로그.
+
+  - id: spinner
+    type: loader
+    description: 로딩 상태 표시 스피너.
+
+  - id: toast
+    type: notification
+    description: |
+      화면 하단 우측에 표시되는 알림 메시지.
+      variants: success, error, info, warning
+
+colors:
+  primary: "#3b82f6"
+  success: "#22c55e"
+  warning: "#f97316"
+  error: "#ef4444"
+  gray_50: "#f9fafb"
+  gray_500: "#6b7280"
+  gray_900: "#111827"
+
+typography:
+  heading_1: 32px bold
+  body_medium: 14px regular
+  caption: 12px regular
+
+spacing:
+  xs: 4px
+  sm: 8px
+  md: 12px
+  lg: 16px
+  xl: 20px
+
+animations:
+  duration_fast: 150ms
+  duration_base: 300ms
+  easing_ease_out: cubic-bezier(0, 0, 0.2, 1)

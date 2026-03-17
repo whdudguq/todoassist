@@ -1,0 +1,64 @@
+version: "2.0"
+
+screen:
+  id: ai-chat
+  name: AI 비서 채팅
+  route: null
+  layout: right-sidebar-panel
+  width: 300px
+  toggle: global
+  description: |
+    우측 사이드바 채팅 패널. 항상 접근 가능.
+    Eros: AI 감정 안전 비서
+
+components:
+  - id: chat_header
+    description: "AI 비서" 타이틀 + 닫기 버튼
+
+  - id: message_list
+    description: |
+      메시지 타임라인
+      - morning: 아침 인사 (warm)
+      - start: 태스크 시작 격려
+      - complete: 완료 축하
+      - nudge: 감정 인식 넛지 ("이 과제가 좀 지루하죠?")
+      - milestone: 마일스톤 달성
+      - user_response: 사용자 메시지
+      - ai_response: AI 응답 (Claude API)
+
+  - id: chat_input_area
+    description: |
+      텍스트 입력 + 빠른 액션 버튼
+      - "다음 제안": AI가 다음 할일 추천
+      - "오늘 분석": daily_stats 기반 분석
+
+interactions:
+  - name: 아침 자동 인사
+    trigger: 근무 시작 시간
+    then: warm tone 인사말
+
+  - name: 태스크 시작 → 격려
+    trigger: "2분만 시작하기" 클릭
+    then: 격려 메시지 표시
+
+  - name: 미루기 감지 → 넛지
+    trigger: task deferred >=2회
+    then: "이 과제가 좀 지루하죠?" 톤 메시지
+
+  - name: 완료 → 축하
+    trigger: task completed
+    then: completedCount +1, 축하 메시지
+
+  - name: 마일스톤 → 특별 축하
+    trigger: completedCount = 50/100/200...
+    then: 배지 + 특별 메시지
+
+  - name: 사용자 대화
+    trigger: 텍스트 입력 후 Enter
+    then: Claude API 응답
+
+eros_principles:
+  - "AI 감정 안전 비서: warm/empathetic tone"
+  - "2분 마이크로 시작: 시작 격려"
+  - "감정 인식 넛지: 미루기 감지 시 따뜻한 톤"
+  - "성취 축적: 누적 완료 건수 축하"

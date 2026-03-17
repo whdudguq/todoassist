@@ -1,0 +1,55 @@
+version: "2.0"
+
+screen:
+  id: settings
+  name: 설정
+  route: /settings
+  layout: sidebar-main
+  description: |
+    앱 설정 화면. 탭 구조: 기본, 카테고리, 알림
+
+components:
+  - id: settings_tabs
+    tabs:
+      - id: basic_tab
+        label: "기본"
+        sections:
+          - id: user_info
+            fields: [username, userTitle]
+          - id: work_hours
+            fields: [workStartTime, workEndTime]
+          - id: api_key
+            fields: [apiKey, test_button]
+          - id: backup
+            buttons: [backup, restore, export, delete_all]
+
+      - id: categories_tab
+        label: "카테고리"
+        components:
+          - add_category_btn
+          - category_table (color, name, icon, usage, actions)
+
+      - id: notifications_tab
+        label: "알림"
+        sections:
+          - toggle_items: [timebox, deferral, deadline, completion]
+          - ai_frequency_select: [rarely, moderate, often]
+
+interactions:
+  - name: API 테스트
+    description: Claude API 연결 확인
+
+  - name: 데이터 백업
+    description: JSON 파일로 다운로드
+
+  - name: 데이터 복원
+    description: 백업 파일 선택해서 복원
+
+  - name: 카테고리 관리
+    description: CRUD 작업 (인라인 편집)
+
+  - name: 알림 설정
+    description: 토글로 ON/OFF
+
+  - name: AI 격려 빈도
+    description: rarely/moderate/often 선택

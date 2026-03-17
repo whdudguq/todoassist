@@ -1,0 +1,62 @@
+version: "2.0"
+
+screen:
+  id: dashboard
+  name: 대시보드
+  route: /
+  layout: sidebar-main
+  description: |
+    Eros 설계 원칙 구현: 따뜻한 AI 인사말로 시작, 
+    "2분만 시작하기"로 진입 장벽 제거, 누적 성취로 동기 부여. 스트릭 없음.
+
+components:
+  - id: greeting_card
+    type: card
+    position: main-top
+    description: |
+      AI 인사말 카드. 따뜻한 톤으로 아침/오후/저녁 다른 메시지.
+      Eros: "AI 감정 안전 비서"로 감정 친화적 시작.
+
+  - id: progress_ring
+    type: progress-ring
+    position: main-top-right
+    description: 오늘의 전체 진행률 (완료/예정)
+
+  - id: today_tasks
+    type: task-card-list
+    position: main
+    description: |
+      오늘 예정 태스크 3-5개 카드 리스트.
+      Eros: "2분만 시작하기"로 시작 심리 장벽 제거, 
+            "지금 안 할래요"로 죄책감 제거
+
+  - id: weekly_chart
+    type: line-chart
+    position: main-bottom-left
+    description: 주간 완료율 추이 (라인 차트)
+
+  - id: total_completed_badge
+    type: badge
+    position: main-bottom-right
+    description: |
+      총 완료 건수 표시 (스트릭 대신 축적형 성취).
+      Eros 원칙: 누적 완료 건수 강조.
+
+tests:
+  - name: 초기 로드
+    when: 앱 실행
+    then: [AI 인사말 표시, 진행률 링 표시, 오늘 태스크 표시]
+
+  - name: 마이크로 시작
+    when: "2분만 시작하기" 클릭
+    then: [태스크 상태 → in_progress, 2분 타이머 시작]
+
+  - name: 죄책감 없는 미루기
+    when: "지금 안 할래요" 클릭
+    then: [AI가 리스케줄, 격려 메시지, 죄책감 없는 톤]
+
+eros_principles_implemented:
+  - "AI 감정 안전 비서: warm tone 인사말"
+  - "2분 마이크로 시작: '2분만 시작하기' 버튼"
+  - "감정 인식 넛지: AI 비서 패널과 연동"
+  - "성취 축적: 누적 완료 건수 강조"

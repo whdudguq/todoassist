@@ -1,0 +1,104 @@
+version: "2.0"
+
+# Eros 설계 원칙 반영:
+# - AI 감정 안전 비서: encouragements 리소스로 감정 인식 격려 메시지 관리
+# - 2분 마이크로 시작: 모든 task는 estimatedMinutes로 시간 추정 지원
+# - 감정 인식 넛지: encouragements 타입으로 "미루고 있네요" → "이 과제가 좀 지루하죠?" 톤 구분
+# - 과제 자동 쪼개기: task.parentId로 계층 관계 관리, AI가 자동 분해 제안 가능
+# - 성취 축적: daily_stats.completedCount로 스트릭 대신 누적 성취 추적
+
+resources:
+  tasks:
+    fields:
+      - id: "고유 식별자 (UUID)"
+      - title: "태스크 제목 (max 50자)"
+      - description: "상세 설명 (max 1000자)"
+      - deadline: "마감 날짜/시간 (AI 추정 가능)"
+      - estimatedMinutes: "예상 소요시간 (1-1440분, 2분 마이크로 시작 지원)"
+      - importance: "중요도 (1-5 스케일, AI 추정 가능)"
+      - category: "카테고리 분류 (AI 자동 분류)"
+      - relatedClass: "관련 공정/설비 코드 (제조업 특화)"
+      - parentId: "부모 태스크 ID (계층 관계, NULL = 루트)"
+      - status: "상태 (pending, in_progress, completed, deferred)"
+      - progress: "진행률 (0-100%, 부모는 자식 평균 자동 계산)"
+      - templateId: "템플릿 ID (템플릿 기반 생성 시)"
+      - createdAt: "생성 시각"
+      - updatedAt: "수정 시각"
+      - completedAt: "완료 시각 (성취 축적 통계용)"
+    key: id
+    relations:
+      - resource: tasks
+        type: self-join
+        field: parentId
+        description: "부모-자식 계층 관계"
+      - resource: timeboxes
+        type: one-to-many
+        field: taskId
+        description: "이 태스크에 할당된 시간박스들"
+      - resource: encouragements
+        type: one-to-many
+        field: taskId
+        description: "이 태스크에 대한 AI 격려 메시지들"
+
+  timeboxes:
+    fields:
+      - id: "고유 식별자"
+      - taskId: "할당된 태스크 ID"
+      - date: "날짜"
+      - startSlot: "시작 슬롯 (0-47, 30분 단위)"
+      - endSlot: "종료 슬롯"
+      - status: "상태 (scheduled, in_progress, completed, skipped)"
+      - aiSuggested: "AI가 제안한 슬롯인지 여부"
+      - createdAt: "생성 시각"
+      - updatedAt: "수정 시각"
+    key: id
+    description: "칸반 보드의 시간 블록 단위. AI가 중요도/마감일 기반으로 최적 스케줄 제안"
+
+  encouragements:
+    fields:
+      - id: "고유 식별자"
+      - taskId: "관련 태스크 ID (NULL = 일반 메시지)"
+      - type: "메시지 타입 (morning, start, complete, nudge, milestone)"
+      - message: "메시지 텍스트 (AI 생성 또는 템플릿)"
+      - tone: "톤 (warm, urgent, humorous, professional)"
+      - createdAt: "생성 시각"
+    key: id
+
+  categories:
+    fields:
+      - id: "고유 식별자"
+      - name: "카테고리 이름"
+      - color: "HEX 색상 코드 (UI 표시용)"
+      - icon: "아이콘 문자열 (shadcn/ui 호환)"
+      - createdAt: "생성 시각"
+    key: id
+
+  templates:
+    fields:
+      - id: "고유 식별자"
+      - name: "템플릿 이름"
+      - description: "설명"
+      - taskTree: "JSON 구조의 태스크 트리 정의"
+      - category: "기본 카테고리"
+      - createdAt: "생성 시각"
+    key: id
+
+  settings:
+    fields:
+      - id: "고유 식별자"
+      - key: "설정 키 (string)"
+      - value: "설정 값 (JSON 가능)"
+    key: id
+
+  daily_stats:
+    fields:
+      - id: "고유 식별자"
+      - date: "날짜"
+      - completedCount: "완료한 태스크 건수 (성취 축적용)"
+      - totalPlanned: "계획한 태스크 건수"
+      - deferredCount: "미룬 태스크 건수 (감정 인식 패턴 분석용)"
+      - totalMinutesUsed: "실제 사용 시간 (분)"
+      - categoryBreakdown: "카테고리별 시간 분포 (JSON)"
+      - createdAt: "생성 시각"
+      - updatedAt: "수정 시각"
+    key: id

@@ -1,0 +1,63 @@
+version: "2.0"
+project: TodoAssist
+description: |
+  Eros 분석 기반 AI 감정 안전 비서 데스크톱 앱 — 제조업 품질 엔지니어용
+
+  설계 원칙:
+  1. AI 감정 안전 비서: 격려 톤을 감정에 맞게 다양화
+  2. 2분 마이크로 시작: 모든 화면에서 "2분만 시작하기" 가능
+  3. 감정 인식 넛지: "미루고 있네요" 대신 "이 과제가 좀 지루하죠?"
+  4. 과제 자동 쪼개기: AI가 미루는 태스크를 더 작은 단위로 제안
+  5. 성취 축적: 깨진 스트릭 없음, 누적 완료 건수 표시
+
+screens:
+  - id: dashboard
+    name: 대시보드
+    route: /
+    file: dashboard.yaml
+    specialist: frontend-specialist
+    priority: P1
+
+  - id: kanban
+    name: 칸반 보드
+    route: /kanban
+    file: kanban.yaml
+    specialist: frontend-specialist
+    priority: P1
+
+  - id: task-tree
+    name: 태스크 트리
+    route: /tasks
+    file: task-tree.yaml
+    specialist: frontend-specialist
+    priority: P1
+
+  - id: task-form
+    name: 태스크 등록/수정
+    route: /tasks/:id
+    file: task-form.yaml
+    type: modal
+    specialist: frontend-specialist
+    priority: P1
+
+  - id: statistics
+    name: 통계/리포트
+    route: /statistics
+    file: statistics.yaml
+    specialist: frontend-specialist
+    priority: P2
+
+  - id: ai-chat
+    name: AI 비서 채팅
+    route: null
+    file: ai-chat.yaml
+    type: sidebar-panel
+    specialist: frontend-specialist
+    priority: P1
+
+  - id: settings
+    name: 설정
+    route: /settings
+    file: settings.yaml
+    specialist: frontend-specialist
+    priority: P2

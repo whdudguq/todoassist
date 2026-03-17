@@ -1,0 +1,99 @@
+version: "2.0"
+
+description: |
+  전역 타입 정의.
+  모든 화면과 리소스에서 사용되는 데이터 타입.
+
+types:
+  TaskStatus:
+    type: enum
+    values: [pending, in_progress, completed, deferred]
+
+  TimeBoxStatus:
+    type: enum
+    values: [scheduled, in_progress, completed, skipped]
+
+  EncouragementType:
+    type: enum
+    values: [morning, start, complete, nudge, milestone, split_suggest]
+
+  EncouragementTone:
+    type: enum
+    values: [warm, urgent, humorous, professional, empathetic]
+
+  Importance:
+    type: integer
+    range: [1, 5]
+    mapping:
+      1: "낮음"
+      5: "매우 높음"
+
+  Progress:
+    type: integer
+    range: [0, 100]
+    unit: "%"
+
+  TimeSlot:
+    type: integer
+    description: "30분 단위 시간 슬롯 (0-47)"
+    range: [0, 47]
+    mapping:
+      0: "00:00"
+      16: "08:00"
+      17: "08:30"
+      35: "17:30"
+
+  DateRange:
+    type: enum
+    values: [this_week, last_week, this_month, last_month, custom]
+
+  AiEstimate:
+    type: object
+    fields:
+      - estimatedMinutes: integer
+      - importance: Importance
+      - suggestedCategory: string
+      - estimatedDeadline: datetime
+      - reasoning: string
+      - confidence: float (0.0-1.0)
+
+  DailyStats:
+    type: object
+    fields:
+      - date: date
+      - completedCount: integer
+      - totalPlanned: integer
+      - completionRate: float (computed)
+      - deferredCount: integer
+      - totalMinutesUsed: integer
+      - categoryBreakdown: object
+
+  Message:
+    type: object
+    fields:
+      - id: string
+      - speaker: enum [user, ai]
+      - content: string
+      - timestamp: datetime
+      - taskId: string (optional)
+
+validations:
+  task_title:
+    required: true
+    min_length: 1
+    max_length: 50
+
+  task_estimatedMinutes:
+    required: true
+    type: integer
+    min: 1
+    max: 1440
+
+  api_key:
+    pattern: "^sk-ant-.{20,}$"
+
+constants:
+  MIN_MICRO_START_DURATION: 2
+  MILESTONE_INTERVALS: [50, 100, 200, 500, 1000]
+  DEFERRAL_NUDGE_THRESHOLD: 2
+  MAX_DEFERRAL_NUDGE_FREQUENCY: 120

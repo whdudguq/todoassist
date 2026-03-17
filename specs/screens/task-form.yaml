@@ -1,0 +1,54 @@
+version: "2.0"
+
+screen:
+  id: task-form
+  name: 태스크 등록/수정
+  route: /tasks/:id
+  layout: modal
+  size: medium
+  description: |
+    태스크 정보 입력/수정 폼.
+    Eros: AI가 제목 5자 이상일 때 즉시 소요시간/중요도/카테고리 추정
+
+components:
+  - id: modal_header
+    description: 모달 제목 및 닫기 버튼
+
+  - id: task_form
+    description: |
+      폼 필드: title*, estimatedMinutes*, importance, category, deadline
+      - AI 추정값 배지
+      - 각 필드 자유롭게 수정 가능
+
+  - id: ai_estimate_badge
+    description: |
+      제목 5자 이상일 때 나타나는 AI 추정값 요약
+      Eros: 사용자가 쉽게 수정 가능
+
+  - id: subtask_section
+    description: 서브태스크 인라인 추가/삭제
+
+  - id: form_actions
+    description: 저장/취소 버튼
+
+interactions:
+  - name: AI 추정
+    when: 제목 5자 이상 입력
+    then: |
+      Claude API 호출
+      → estimatedMinutes/importance/category 추정
+      → 배지로 표시
+      → 사용자가 클릭해서 필드에 입력
+
+  - name: 저장
+    when: 저장 버튼 클릭
+    then: |
+      유효성 검사
+      → task INSERT/UPDATE
+      → 서브태스크도 함께 저장
+      → 모달 닫기
+
+eros_principles:
+  - "AI 감정 안전 비서: 제안, 강압 아님"
+  - "2분 마이크로 시작: time_presets에 '2분' 옵션"
+  - "과제 자동 쪼개기: 서브태스크 인라인 추가"
