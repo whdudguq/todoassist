@@ -218,11 +218,11 @@ export function TaskTree() {
       <div className="flex items-center justify-between px-6 py-4 bg-surface-0 border-b border-surface-200">
         <h1 className="text-lg font-semibold text-surface-900">Task Tree</h1>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm">
+          <Button variant="secondary" size="sm" onClick={() => alert('템플릿 저장은 Electron 앱에서 사용 가능합니다.')}>
             <BookmarkPlus size={14} />
             Save as Template
           </Button>
-          <Button variant="secondary" size="sm">
+          <Button variant="secondary" size="sm" onClick={() => alert('템플릿 불러오기는 Electron 앱에서 사용 가능합니다.')}>
             <BookOpen size={14} />
             Load Template
           </Button>
