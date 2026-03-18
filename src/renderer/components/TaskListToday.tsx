@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import type { Task } from '../../shared/types';
 import { Button } from './ui/button';
+import { ElapsedTimer } from './ElapsedTimer';
 import { cn } from '@renderer/lib/cn';
 
 interface TaskListTodayProps {
@@ -94,11 +95,12 @@ export function TaskListToday({ tasks, onMicroStart, onDefer, className }: TaskL
               </p>
             )}
 
-            {/* Eros: started message */}
+            {/* Eros: elapsed timer + encouragement */}
             {isInProgress && !isCompleted && (
-              <p className="text-xs text-accent-600 bg-accent-50 px-2 py-1 rounded-md">
-                좋아요! 시작이 반이에요. 화이팅!
-              </p>
+              <div className="flex items-center justify-between gap-2">
+                <ElapsedTimer startedAt={task.updatedAt} />
+                <span className="text-[11px] text-accent-500">화이팅!</span>
+              </div>
             )}
 
             <div className="flex gap-2">
