@@ -1,9 +1,6 @@
 /**
  * @TASK INT-1 - Encouragement IPC Handlers
- * @SPEC docs/planning/02-trd.md#Encouragement
- *
- * Registers IPC handlers for Encouragement operations.
- * Maps IPC_CHANNELS.ENCOURAGEMENT to EncouragementService methods.
+ * Uses getter function so service can be reinitialized at runtime.
  */
 
 import { ipcMain } from 'electron';
@@ -15,15 +12,9 @@ import type {
   EncouragementContext,
 } from '../services/encouragement';
 
-/**
- * Register all Encouragement IPC handlers
- *
- * @param service - EncouragementService instance
- */
 export function registerEncouragementHandlers(
-  service: EncouragementService,
+  getService: () => EncouragementService | null,
 ): void {
-  // @TASK INT-1 - encouragement:generate (async - calls Claude API)
   ipcMain.handle(
     IPC_CHANNELS.ENCOURAGEMENT.GENERATE,
     async (
@@ -32,12 +23,15 @@ export function registerEncouragementHandlers(
       type: EncouragementType,
       context?: EncouragementContext,
     ) => {
+      const service = getService();
+      if (!service) throw new Error('API 키가 설정되지 않았습니다.');
       return service.generateMessage(task, type, context);
     },
   );
 
-  // @TASK INT-1 - encouragement:getToday
   ipcMain.handle(IPC_CHANNELS.ENCOURAGEMENT.GET_TODAY, () => {
+    const service = getService();
+    if (!service) return [];
     return service.getTodayMessages();
   });
 }

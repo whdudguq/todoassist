@@ -61,15 +61,16 @@ export function Settings() {
 
   // ── Tab handlers ──────────────────────────────────────────
 
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
   function handleSave() {
     const api = getApi();
     if (!api) {
-      // Dev mode: settings are already live in the store — show confirmation
-      console.info('[Settings] Dev mode: settings are stored in memory (no IPC persistence).');
       alert('설정이 저장되었습니다. (개발 모드: 메모리에만 저장됨)');
       return;
     }
 
+    setSaveStatus('saving');
     const store = useSettingStore.getState();
     const entries: Array<[string, unknown]> = [
       ['userName', store.userName],
@@ -82,7 +83,14 @@ export function Settings() {
 
     Promise.all(
       entries.map(([key, value]) => api.settings.update(key, JSON.stringify(value)))
-    ).catch(console.error);
+    ).then(() => {
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    }).catch((err) => {
+      console.error('[Settings] save error:', err);
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    });
   }
 
   // ── Category handlers ─────────────────────────────────────
@@ -208,9 +216,10 @@ export function Settings() {
           variant="primary"
           size="lg"
           onClick={handleSave}
+          disabled={saveStatus === 'saving'}
           className="w-full sm:w-auto"
         >
-          저장
+          {saveStatus === 'saving' ? '저장 중...' : saveStatus === 'saved' ? '저장 완료!' : saveStatus === 'error' ? '저장 실패' : '저장'}
         </Button>
       </div>
     </div>

@@ -149,6 +149,41 @@ function getApiKeyFromDb(db: ReturnType<typeof getDb>): string {
   }
 }
 
+// Module-level AI services — can be reinitialized when API key changes
+let claudeService: ClaudeApiService | null = null;
+let scheduleService: AiScheduleService | null = null;
+let encouragementService: EncouragementService | null = null;
+let analyticsService: AnalyticsService | null = null;
+
+function initAiServices(
+  db: ReturnType<typeof getDb>,
+  taskService: TaskCrudService,
+  timeboxService: TimeBoxCrudService,
+  apiKey: string,
+): void {
+  if (!apiKey) {
+    claudeService = null;
+    scheduleService = null;
+    encouragementService = null;
+    analyticsService = null;
+    debugLog('[ai] services cleared (no API key)');
+    return;
+  }
+  try {
+    claudeService = new ClaudeApiService(apiKey);
+    scheduleService = new AiScheduleService(taskService, timeboxService, claudeService);
+    encouragementService = new EncouragementService(db, claudeService);
+    analyticsService = new AnalyticsService(db, claudeService);
+    debugLog('[ai] services initialized');
+  } catch (error) {
+    debugLog(`[ai] init failed: ${error}`);
+    claudeService = null;
+    scheduleService = null;
+    encouragementService = null;
+    analyticsService = null;
+  }
+}
+
 /**
  * Initialize all services and register IPC handlers.
  * Called before window creation to ensure IPC is ready.
@@ -169,42 +204,26 @@ function bootstrap(): void {
   const statsService = new DailyStatsService(db);
   const reflectionService = new ReflectionCrudService(db);
 
-  // 4. AI Services (may fail if apiKey is empty — that's OK)
-  let claudeService: ClaudeApiService | null = null;
-  let scheduleService: AiScheduleService | null = null;
-  let encouragementService: EncouragementService | null = null;
-  let analyticsService: AnalyticsService | null = null;
-
-  if (apiKey) {
-    try {
-      claudeService = new ClaudeApiService(apiKey);
-      scheduleService = new AiScheduleService(taskService, timeboxService, claudeService);
-      encouragementService = new EncouragementService(db, claudeService);
-      analyticsService = new AnalyticsService(db, claudeService);
-    } catch (error) {
-      console.warn('[bootstrap] Failed to initialize AI services:', error);
-    }
-  } else {
-    console.warn('[bootstrap] No Claude API key configured. AI features disabled.');
-  }
+  // 4. AI Services
+  initAiServices(db, taskService, timeboxService, apiKey);
 
   // 5. Register IPC Handlers — CRUD (always available)
   registerTaskHandlers(taskService);
   registerCategoryHandlers(categoryService);
   registerTemplateHandlers(templateService);
   registerTimeBoxHandlers(timeboxService);
-  registerSettingsHandlers(db);
+  registerSettingsHandlers(db, () => {
+    // Callback: reinitialize AI services when API key changes
+    const newKey = getApiKeyFromDb(db);
+    initAiServices(db, taskService, timeboxService, newKey);
+  });
 
-  registerStatsHandlers(statsService, analyticsService);
+  registerStatsHandlers(statsService, () => analyticsService);
   registerReflectionHandlers(reflectionService);
 
-  // 6. Register IPC Handlers — AI-dependent (only if services initialized)
-  if (encouragementService) {
-    registerEncouragementHandlers(encouragementService);
-  }
-  if (claudeService && scheduleService) {
-    registerAiHandlers(claudeService, scheduleService);
-  }
+  // 6. Register AI + Encouragement handlers (always — they check service availability)
+  registerEncouragementHandlers(() => encouragementService);
+  registerAiHandlers(() => claudeService, () => scheduleService);
 
   console.log('[bootstrap] All services and IPC handlers initialized.');
 }
