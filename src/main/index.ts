@@ -11,8 +11,9 @@
  * 6. Clean up DB on quit
  */
 
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, dialog } from 'electron';
 import path from 'path';
+import fs from 'fs';
 
 // DB
 import { getDb, closeDb } from './db/connection';
@@ -57,11 +58,12 @@ function createWindow(): void {
     title: 'TodoAssist',
   });
 
-  if (process.env.NODE_ENV === 'development') {
+  if (!app.isPackaged) {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../../renderer/index.html'));
+    const indexPath = path.join(__dirname, '../../renderer/index.html');
+    mainWindow.loadFile(indexPath);
   }
 
   mainWindow.on('closed', () => {
@@ -157,9 +159,24 @@ function bootstrap(): void {
   console.log('[bootstrap] All services and IPC handlers initialized.');
 }
 
+/** Write crash log to userData for debugging */
+function writeCrashLog(error: unknown): void {
+  try {
+    const logPath = path.join(app.getPath('userData'), 'crash.log');
+    const msg = `[${new Date().toISOString()}] ${error instanceof Error ? error.stack : String(error)}\n`;
+    fs.appendFileSync(logPath, msg);
+  } catch { /* ignore */ }
+}
+
 app.whenReady().then(() => {
-  bootstrap();
-  createWindow();
+  try {
+    bootstrap();
+    createWindow();
+  } catch (error) {
+    writeCrashLog(error);
+    dialog.showErrorBox('TodoAssist 시작 오류', String(error));
+    app.quit();
+  }
 });
 
 app.on('window-all-closed', () => {
