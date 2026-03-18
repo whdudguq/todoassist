@@ -97,10 +97,7 @@ export function TaskListToday({ tasks, onMicroStart, onDefer, className }: TaskL
 
             {/* Eros: elapsed timer + encouragement */}
             {isInProgress && !isCompleted && (
-              <div className="flex items-center justify-between gap-2">
-                <ElapsedTimer startedAt={task.updatedAt} />
-                <span className="text-[11px] text-accent-500">화이팅!</span>
-              </div>
+              <ElapsedTimer startedAt={task.updatedAt} estimatedMinutes={task.estimatedMinutes} />
             )}
 
             <div className="flex gap-2">
