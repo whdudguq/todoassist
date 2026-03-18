@@ -15,6 +15,16 @@ import { app, BrowserWindow, dialog } from 'electron';
 import path from 'path';
 import fs from 'fs';
 
+// Catch ALL uncaught errors and write to crash.log
+process.on('uncaughtException', (error) => {
+  try {
+    const logPath = path.join(app.getPath('userData'), 'crash.log');
+    fs.appendFileSync(logPath, `[${new Date().toISOString()}] UNCAUGHT: ${error.stack}\n`);
+    dialog.showErrorBox('TodoAssist 오류', `${error.message}\n\n로그: ${logPath}`);
+  } catch { /* ignore */ }
+  app.quit();
+});
+
 // DB
 import { getDb, closeDb } from './db/connection';
 import { runMigrations } from './database/migrations';
