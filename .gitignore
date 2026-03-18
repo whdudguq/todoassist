@@ -9,3 +9,5 @@ dist/
 thumbs.db
 *.log
 coverage/
+release/
+.playwright-mcp/

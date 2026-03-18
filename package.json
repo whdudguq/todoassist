@@ -41,6 +41,11 @@
     },
     "linux": {
       "target": "AppImage"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "whdudguq",
+      "repo": "todoassist"
     }
   },
   "dependencies": {

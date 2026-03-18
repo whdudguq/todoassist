@@ -100,6 +100,18 @@ export interface DailyStats {
   updatedAt: number;
 }
 
+/** Daily reflection (Cogito: 하루 돌아보기) */
+export interface DailyReflection {
+  id: string;
+  date: string;                   // 'YYYY-MM-DD'
+  gratitude: string | null;
+  feedbackStart: string | null;
+  feedbackMid: string | null;
+  feedbackEnd: string | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
 /** Chat message (renderer-only) */
 export interface ChatMessage {
   id: string;
@@ -147,6 +159,10 @@ export const IPC_CHANNELS = {
     GET_DAILY: 'stats:getDaily',
     GET_RANGE: 'stats:getRange',
     AI_INSIGHTS: 'stats:aiInsights',
+  },
+  REFLECTION: {
+    GET_BY_DATE: 'reflection:getByDate',
+    UPSERT: 'reflection:upsert',
   },
   SETTINGS: {
     GET: 'settings:get',

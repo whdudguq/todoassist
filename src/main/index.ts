@@ -26,6 +26,7 @@ import { TimeBoxCrudService } from './services/timebox-crud';
 import { ClaudeApiService } from './services/claude-api';
 import { AiScheduleService } from './services/ai-schedule';
 import { DailyStatsService } from './services/daily-stats';
+import { ReflectionCrudService } from './services/reflection-crud';
 import { EncouragementService } from './services/encouragement';
 import { AnalyticsService } from './services/analytics';
 
@@ -35,6 +36,7 @@ import { registerCategoryHandlers } from './ipc/category-handlers';
 import { registerTemplateHandlers } from './ipc/template-handlers';
 import { registerTimeBoxHandlers } from './ipc/timebox-handlers';
 import { registerStatsHandlers } from './ipc/stats-handlers';
+import { registerReflectionHandlers } from './ipc/reflection-handlers';
 import { registerEncouragementHandlers } from './ipc/encouragement-handlers';
 import { registerSettingsHandlers } from './ipc/settings-handlers';
 import { registerAiHandlers } from './ipc/ai-handlers';
@@ -113,6 +115,7 @@ function bootstrap(): void {
   const templateService = new TemplateCrudService(db, taskService);
   const timeboxService = new TimeBoxCrudService(db);
   const statsService = new DailyStatsService(db);
+  const reflectionService = new ReflectionCrudService(db);
 
   // 4. AI Services (may fail if apiKey is empty — that's OK)
   let claudeService: ClaudeApiService | null = null;
@@ -141,6 +144,7 @@ function bootstrap(): void {
   registerSettingsHandlers(db);
 
   registerStatsHandlers(statsService, analyticsService);
+  registerReflectionHandlers(reflectionService);
 
   // 6. Register IPC Handlers — AI-dependent (only if services initialized)
   if (encouragementService) {

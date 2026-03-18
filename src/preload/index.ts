@@ -46,6 +46,10 @@ const api = {
     aiInsights: (start: string, end: string, period: string) =>
       ipcRenderer.invoke(IPC_CHANNELS.STATS.AI_INSIGHTS, start, end, period),
   },
+  reflection: {
+    getByDate: (date: string) => ipcRenderer.invoke(IPC_CHANNELS.REFLECTION.GET_BY_DATE, date),
+    upsert: (date: string, updates: unknown) => ipcRenderer.invoke(IPC_CHANNELS.REFLECTION.UPSERT, date, updates),
+  },
   settings: {
     get: (key: string) => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.GET, key),
     update: (key: string, value: string) =>

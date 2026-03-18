@@ -111,26 +111,48 @@ export function runMigrations(db: Database.Database): void {
     ensureMigrationsTable(db);
 
     const currentVersion = getCurrentVersion(db);
-    const targetVersion = 1; // Currently we have one schema version
+    const targetVersion = 2;
 
     if (currentVersion >= targetVersion) {
       // Migrations already applied
       return;
     }
 
-    // Find and read schema.sql
-    const schemaPath = findSchemaPath();
-    const schemaSql = readFileSync(schemaPath, 'utf-8');
+    // Version 1: Initial schema from schema.sql
+    if (currentVersion < 1) {
+      const schemaPath = findSchemaPath();
+      const schemaSql = readFileSync(schemaPath, 'utf-8');
 
-    // Execute migration in transaction
-    const transaction = db.transaction(() => {
-      db.exec(schemaSql);
-      recordMigration(db, targetVersion);
-    });
+      const transaction1 = db.transaction(() => {
+        db.exec(schemaSql);
+        recordMigration(db, 1);
+      });
 
-    transaction();
+      transaction1();
+      console.log('[Migration] Applied version 1 (initial schema)');
+    }
 
-    console.log(`[Migration] Applied version ${targetVersion}`);
+    // Version 2: DailyReflection table
+    if (currentVersion < 2) {
+      const transaction2 = db.transaction(() => {
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS DailyReflection (
+            id TEXT PRIMARY KEY,
+            date TEXT NOT NULL,
+            gratitude TEXT,
+            feedbackStart TEXT,
+            feedbackMid TEXT,
+            feedbackEnd TEXT,
+            createdAt INTEGER NOT NULL,
+            updatedAt INTEGER NOT NULL
+          );
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_reflection_date ON DailyReflection(date);
+        `);
+        recordMigration(db, 2);
+      });
+      transaction2();
+      console.log('[Migration] Applied version 2 (DailyReflection)');
+    }
   } catch (error) {
     console.error('[Migration] Error:', error);
     throw error;
@@ -144,7 +166,7 @@ export function isMigrationComplete(db: Database.Database): boolean {
   try {
     ensureMigrationsTable(db);
     const currentVersion = getCurrentVersion(db);
-    return currentVersion >= 1;
+    return currentVersion >= 2;
   } catch {
     return false;
   }
@@ -162,7 +184,7 @@ export function getMigrationStatus(db: Database.Database): {
   try {
     ensureMigrationsTable(db);
     const currentVersion = getCurrentVersion(db);
-    const targetVersion = 1;
+    const targetVersion = 2;
     const appliedMigrations = db.prepare('SELECT version, appliedAt FROM _migrations ORDER BY version').all() as MigrationRecord[];
 
     return {
@@ -174,7 +196,7 @@ export function getMigrationStatus(db: Database.Database): {
   } catch (error) {
     return {
       currentVersion: 0,
-      targetVersion: 1,
+      targetVersion: 2,
       isComplete: false,
       appliedMigrations: [],
     };

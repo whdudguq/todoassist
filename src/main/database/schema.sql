@@ -137,6 +137,22 @@ CREATE TABLE IF NOT EXISTS DailyStats (
 );
 
 -- ============================================
+-- 8. DailyReflection Table (Cogito: 하루 돌아보기)
+-- ============================================
+CREATE TABLE IF NOT EXISTS DailyReflection (
+  id TEXT PRIMARY KEY,
+  date TEXT NOT NULL,
+  gratitude TEXT,
+  feedbackStart TEXT,
+  feedbackMid TEXT,
+  feedbackEnd TEXT,
+  createdAt INTEGER NOT NULL,
+  updatedAt INTEGER NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_reflection_date ON DailyReflection(date);
+
+-- ============================================
 -- Seed Data: Categories
 -- ============================================
 INSERT OR IGNORE INTO Category (id, name, color, icon, createdAt)
