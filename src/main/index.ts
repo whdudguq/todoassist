@@ -12,6 +12,7 @@
  */
 
 import { app, BrowserWindow, dialog } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import path from 'path';
 import fs from 'fs';
 
@@ -225,6 +226,42 @@ app.whenReady().then(() => {
     debugLog('bootstrap: done');
     createWindow();
     debugLog('createWindow: called');
+
+    // Auto-updater: check for updates in packaged app
+    if (app.isPackaged) {
+      autoUpdater.logger = {
+        info: (msg: unknown) => debugLog(`[updater] INFO: ${msg}`),
+        warn: (msg: unknown) => debugLog(`[updater] WARN: ${msg}`),
+        error: (msg: unknown) => debugLog(`[updater] ERROR: ${msg}`),
+        debug: (msg: unknown) => debugLog(`[updater] DEBUG: ${msg}`),
+      };
+      autoUpdater.on('update-available', (info) => {
+        debugLog(`[updater] update-available: v${info.version}`);
+        dialog.showMessageBox({
+          type: 'info',
+          title: '업데이트 알림',
+          message: `새 버전 v${info.version}이 있습니다. 백그라운드에서 다운로드합니다.`,
+        });
+      });
+      autoUpdater.on('update-downloaded', (info) => {
+        debugLog(`[updater] update-downloaded: v${info.version}`);
+        dialog.showMessageBox({
+          type: 'info',
+          title: '업데이트 준비 완료',
+          message: `v${info.version} 다운로드 완료. 확인을 누르면 앱을 재시작하여 업데이트합니다.`,
+          buttons: ['지금 재시작', '나중에'],
+        }).then((result) => {
+          if (result.response === 0) {
+            autoUpdater.quitAndInstall();
+          }
+        });
+      });
+      autoUpdater.on('error', (err) => {
+        debugLog(`[updater] error: ${err.message}`);
+      });
+      autoUpdater.checkForUpdatesAndNotify();
+      debugLog('[updater] checkForUpdatesAndNotify called');
+    }
   } catch (error) {
     debugLog(`STARTUP ERROR: ${error instanceof Error ? error.stack : String(error)}`);
     writeCrashLog(error);
