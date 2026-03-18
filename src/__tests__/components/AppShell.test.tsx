@@ -7,6 +7,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import '@testing-library/jest-dom';
 
 // Mock page components
+vi.mock('@renderer/screens/FocusDay', () => ({
+  FocusDay: () => <div data-testid="page-focusday">FocusDay</div>,
+}));
 vi.mock('@renderer/screens/Dashboard', () => ({
   Dashboard: () => <div data-testid="page-dashboard">Dashboard</div>,
 }));
@@ -53,16 +56,16 @@ describe('AppShell', () => {
     expect(sidebar.className).toMatch(/w-\[52px\]/);
   });
 
-  it('renders dashboard page by default', () => {
+  it('renders FocusDay page by default', () => {
     render(<AppShell />);
-    expect(screen.getByTestId('page-dashboard')).toBeInTheDocument();
+    expect(screen.getByTestId('page-focusday')).toBeInTheDocument();
   });
 
   it('renders kanban page when currentPage is kanban', () => {
     useUiStore.setState({ currentPage: 'kanban' });
     render(<AppShell />);
     expect(screen.getByTestId('page-kanban')).toBeInTheDocument();
-    expect(screen.queryByTestId('page-dashboard')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('page-focusday')).not.toBeInTheDocument();
   });
 
   it('renders taskTree page when currentPage is taskTree', () => {

@@ -4,6 +4,7 @@ import React from 'react';
 import { SidebarNav } from './ui/sidebar-nav';
 import { useUiStore, type PageRoute } from '@renderer/stores/uiStore';
 import { cn } from '@renderer/lib/cn';
+import { FocusDay } from '@renderer/screens/FocusDay';
 import { Dashboard } from '@renderer/screens/Dashboard';
 import { Kanban } from '@renderer/screens/Kanban';
 import { TaskTree } from '@renderer/screens/TaskTree';
@@ -37,7 +38,7 @@ const PAGE_TO_ROUTE: Record<PageRoute, string> = {
 function ActivePage({ page }: { page: PageRoute }) {
   switch (page) {
     case 'dashboard':
-      return <Dashboard />;
+      return <FocusDay />;
     case 'kanban':
       return <Kanban />;
     case 'taskTree':

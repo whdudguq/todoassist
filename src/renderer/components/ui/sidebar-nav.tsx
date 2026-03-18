@@ -16,7 +16,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, route: '/' },
+  { id: 'dashboard', label: 'FocusDay', icon: LayoutDashboard, route: '/' },
   { id: 'kanban', label: 'Kanban', icon: Columns3, route: '/kanban' },
   { id: 'tasks', label: 'Tasks', icon: GitBranch, route: '/tasks' },
   { id: 'stats', label: 'Statistics', icon: BarChart3, route: '/statistics' },

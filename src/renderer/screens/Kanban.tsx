@@ -90,6 +90,11 @@ export function Kanban() {
     const slotsNeeded = Math.max(1, Math.ceil(task.estimatedMinutes / 30));
     const endSlot = Math.min(slot + slotsNeeded - 1, 47);
 
+    // Overlap check: ensure all needed slots are free
+    for (let s = slot; s <= endSlot; s++) {
+      if (todayBoxes.some((tb) => s >= tb.startSlot && s <= tb.endSlot)) return;
+    }
+
     const newTimebox: TimeBox = {
       id: crypto.randomUUID(),
       taskId: selectedTaskId,

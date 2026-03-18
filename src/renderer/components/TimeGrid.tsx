@@ -42,6 +42,14 @@ export function TimeGrid({ timeboxes, onSlotClick, onAiSuggest, hasSelectedTask,
     slotMap.set(tb.startSlot, [...existing, tb]);
   }
 
+  // Track all occupied slots (startSlot ~ endSlot range)
+  const occupiedSlots = new Map<number, TimeBox>();
+  for (const tb of timeboxes) {
+    for (let s = tb.startSlot; s <= tb.endSlot; s++) {
+      occupiedSlots.set(s, tb);
+    }
+  }
+
   const slots = Array.from({ length: WORK_END - WORK_START }, (_, i) => WORK_START + i);
 
   return (
@@ -64,7 +72,10 @@ export function TimeGrid({ timeboxes, onSlotClick, onAiSuggest, hasSelectedTask,
         {slots.map((slot) => {
           const isLunch = LUNCH_SLOTS.includes(slot);
           const timeboxesInSlot = slotMap.get(slot) ?? [];
-          const isEmpty = timeboxesInSlot.length === 0;
+          const isStartSlot = timeboxesInSlot.length > 0;
+          const occupyingTb = occupiedSlots.get(slot);
+          const isMiddleSlot = !isStartSlot && !!occupyingTb;
+          const isEmpty = !isStartSlot && !isMiddleSlot;
 
           return (
             <div
@@ -72,9 +83,10 @@ export function TimeGrid({ timeboxes, onSlotClick, onAiSuggest, hasSelectedTask,
               data-testid={`time-slot-${slot}`}
               data-empty={isEmpty ? 'true' : 'false'}
               data-lunch={isLunch ? 'true' : 'false'}
-              onClick={() => isEmpty && onSlotClick(slot)}
+              data-occupied={occupyingTb ? 'true' : 'false'}
               className={cn(
-                'flex items-stretch min-h-[44px] border-b border-surface-100 last:border-b-0',
+                'flex items-stretch border-b border-surface-100 last:border-b-0 relative',
+                isMiddleSlot ? 'min-h-[44px]' : 'min-h-[44px]',
                 isLunch
                   ? 'bg-surface-200 cursor-default'
                   : isEmpty && hasSelectedTask
@@ -83,8 +95,11 @@ export function TimeGrid({ timeboxes, onSlotClick, onAiSuggest, hasSelectedTask,
                     ? 'bg-surface-0 hover:bg-surface-50 cursor-pointer group'
                     : 'bg-surface-0',
                 // Alternating row for non-lunch even slots
-                !isLunch && (slot - WORK_START) % 2 === 1 && 'bg-surface-50',
+                !isLunch && (slot - WORK_START) % 2 === 1 && isEmpty && 'bg-surface-50',
               )}
+              onClick={() => {
+                if (isEmpty && !isLunch) onSlotClick(slot);
+              }}
             >
               {/* Time label */}
               <div
@@ -98,10 +113,13 @@ export function TimeGrid({ timeboxes, onSlotClick, onAiSuggest, hasSelectedTask,
               </div>
 
               {/* Slot content */}
-              <div className="flex-1 flex items-center px-2 py-1 gap-2">
+              <div className="flex-1 flex items-center px-2 py-1 gap-2 relative">
                 {isLunch && slot === LUNCH_SLOTS[0] ? (
                   <span className="text-xs text-surface-500 font-medium">점심시간</span>
-                ) : isLunch ? null : isEmpty ? (
+                ) : isLunch ? null : isMiddleSlot ? (
+                  // Middle slot of a multi-slot timebox — hidden, covered by spanning card above
+                  null
+                ) : isEmpty ? (
                   <span
                     className={cn(
                       'text-lg leading-none transition-opacity',
@@ -117,6 +135,8 @@ export function TimeGrid({ timeboxes, onSlotClick, onAiSuggest, hasSelectedTask,
                   timeboxesInSlot.map((tb) => {
                     const task = tasks.find((t) => t.id === tb.taskId);
                     if (!task) return null;
+                    const slotSpan = tb.endSlot - tb.startSlot + 1;
+                    const cardHeight = slotSpan > 1 ? slotSpan * 44 : undefined;
                     return (
                       <TaskCard
                         key={tb.id}
@@ -127,7 +147,8 @@ export function TimeGrid({ timeboxes, onSlotClick, onAiSuggest, hasSelectedTask,
                         category={task.category}
                         status={task.status}
                         progress={task.progress}
-                        className="flex-1 !py-2 !px-3"
+                        className={cn('flex-1 !py-2 !px-3', slotSpan > 1 && 'absolute left-2 right-2 z-10')}
+                        style={cardHeight ? { height: `${cardHeight}px`, top: 0 } : undefined}
                         onMicroStart={() => {
                           useTaskStore.getState().updateTask(task.id, { status: 'in_progress' });
                           const api = getApi();
