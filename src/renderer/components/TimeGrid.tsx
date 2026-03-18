@@ -27,10 +27,11 @@ interface TimeGridProps {
   timeboxes: TimeBox[];
   onSlotClick: (slot: number) => void;
   onAiSuggest?: () => void;
+  hasSelectedTask?: boolean;
   className?: string;
 }
 
-export function TimeGrid({ timeboxes, onSlotClick, onAiSuggest, className }: TimeGridProps) {
+export function TimeGrid({ timeboxes, onSlotClick, onAiSuggest, hasSelectedTask, className }: TimeGridProps) {
   const tasks = useTaskStore((s) => s.tasks);
 
   // Build a map: startSlot -> TimeBox[]
@@ -75,6 +76,8 @@ export function TimeGrid({ timeboxes, onSlotClick, onAiSuggest, className }: Tim
                 'flex items-stretch min-h-[44px] border-b border-surface-100 last:border-b-0',
                 isLunch
                   ? 'bg-surface-200 cursor-default'
+                  : isEmpty && hasSelectedTask
+                    ? 'bg-accent-50/40 hover:bg-accent-100/50 cursor-pointer group ring-1 ring-accent-200/50'
                   : isEmpty
                     ? 'bg-surface-0 hover:bg-surface-50 cursor-pointer group'
                     : 'bg-surface-0',
@@ -99,10 +102,15 @@ export function TimeGrid({ timeboxes, onSlotClick, onAiSuggest, className }: Tim
                   <span className="text-xs text-surface-500 font-medium">점심시간</span>
                 ) : isLunch ? null : isEmpty ? (
                   <span
-                    className="text-surface-300 text-lg leading-none opacity-0 group-hover:opacity-100 transition-opacity"
+                    className={cn(
+                      'text-lg leading-none transition-opacity',
+                      hasSelectedTask
+                        ? 'text-accent-400 opacity-60 group-hover:opacity-100 text-xs font-medium'
+                        : 'text-surface-300 opacity-0 group-hover:opacity-100',
+                    )}
                     aria-hidden="true"
                   >
-                    +
+                    {hasSelectedTask ? '여기에 배치' : '+'}
                   </span>
                 ) : (
                   timeboxesInSlot.map((tb) => {
