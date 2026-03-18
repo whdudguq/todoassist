@@ -4,6 +4,7 @@ import { cn } from '@renderer/lib/cn';
 import { Button } from '@renderer/components/ui/button';
 import { TaskCard } from '@renderer/components/ui/task-card';
 import { useTaskStore } from '@renderer/stores/taskStore';
+import { getApi } from '@renderer/hooks/useApi';
 import type { TimeBox } from '@shared/types';
 import { Sparkles } from 'lucide-react';
 
@@ -127,6 +128,16 @@ export function TimeGrid({ timeboxes, onSlotClick, onAiSuggest, hasSelectedTask,
                         status={task.status}
                         progress={task.progress}
                         className="flex-1 !py-2 !px-3"
+                        onMicroStart={() => {
+                          useTaskStore.getState().updateTask(task.id, { status: 'in_progress' });
+                          const api = getApi();
+                          if (api) api.tasks.update(task.id, { status: 'in_progress' }).catch(console.error);
+                        }}
+                        onDefer={() => {
+                          useTaskStore.getState().updateTask(task.id, { status: 'deferred' });
+                          const api = getApi();
+                          if (api) api.tasks.update(task.id, { status: 'deferred' }).catch(console.error);
+                        }}
                       />
                     );
                   })
