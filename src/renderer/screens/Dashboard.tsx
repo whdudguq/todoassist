@@ -142,6 +142,21 @@ export function Dashboard() {
                 tasks={todayTasks}
                 onMicroStart={handleMicroStart}
                 onDefer={handleDefer}
+                onPause={(id) => {
+                  useTaskStore.getState().updateTask(id, { status: 'pending' });
+                  const api = getApi();
+                  if (api) api.tasks.update(id, { status: 'pending' }).catch(console.error);
+                }}
+                onResume={(id) => {
+                  useTaskStore.getState().updateTask(id, { status: 'in_progress', updatedAt: Date.now() });
+                  const api = getApi();
+                  if (api) api.tasks.update(id, { status: 'in_progress' }).catch(console.error);
+                }}
+                onComplete={(id) => {
+                  useTaskStore.getState().updateTask(id, { status: 'completed', progress: 100, completedAt: Date.now() });
+                  const api = getApi();
+                  if (api) api.tasks.update(id, { status: 'completed', progress: 100 }).catch(console.error);
+                }}
               />
             </CardContent>
           </Card>

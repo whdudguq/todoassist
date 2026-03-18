@@ -9,6 +9,9 @@ interface TaskListTodayProps {
   tasks: Task[];
   onMicroStart: (id: string) => void;
   onDefer: (id: string) => void;
+  onPause?: (id: string) => void;
+  onResume?: (id: string) => void;
+  onComplete?: (id: string) => void;
   className?: string;
 }
 
@@ -28,7 +31,7 @@ function ImportanceDots({ value }: { value: number }) {
   );
 }
 
-export function TaskListToday({ tasks, onMicroStart, onDefer, className }: TaskListTodayProps) {
+export function TaskListToday({ tasks, onMicroStart, onDefer, onPause, onResume, onComplete, className }: TaskListTodayProps) {
   const [deferredId, setDeferredId] = useState<string | null>(null);
 
   // Sort by importance desc, take top 5
@@ -102,34 +105,53 @@ export function TaskListToday({ tasks, onMicroStart, onDefer, className }: TaskL
 
             <div className="flex gap-2">
               {isInProgress ? (
+                <>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => onPause?.(task.id)}
+                    className="flex-1 text-xs"
+                  >
+                    ⏸ 일시정지
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() => onComplete?.(task.id)}
+                    className="flex-1 text-xs"
+                  >
+                    ✓ 완료
+                  </Button>
+                </>
+              ) : task.status === 'pending' && deferredId !== task.id ? (
+                <>
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() => onMicroStart(task.id)}
+                    className="flex-1 text-xs"
+                  >
+                    2분만 시작
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleDefer(task.id)}
+                    className="flex-1 text-xs"
+                  >
+                    지금 안 할래요
+                  </Button>
+                </>
+              ) : isDeferred && !isCompleted ? (
                 <Button
                   size="sm"
                   variant="secondary"
-                  disabled
+                  onClick={() => onResume?.(task.id)}
                   className="flex-1 text-xs"
                 >
-                  진행 중...
+                  ▶ 다시 시작
                 </Button>
-              ) : isDeferred || isCompleted ? null : (
-                <Button
-                  size="sm"
-                  variant="primary"
-                  onClick={() => onMicroStart(task.id)}
-                  className="flex-1 text-xs"
-                >
-                  2분만 시작
-                </Button>
-              )}
-              {!isInProgress && !isCompleted && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleDefer(task.id)}
-                  className="flex-1 text-xs"
-                >
-                  지금 안 할래요
-                </Button>
-              )}
+              ) : null}
             </div>
           </div>
         );
