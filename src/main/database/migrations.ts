@@ -13,6 +13,17 @@ import Database from 'better-sqlite3';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
+/** Get Electron's resourcesPath if running in packaged app */
+function getResourcesPath(): string | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { app } = require('electron');
+    return app?.isPackaged ? process.resourcesPath ?? null : null;
+  } catch {
+    return null;
+  }
+}
+
 // In CJS (Electron build): __dirname is available natively
 // In ESM (vitest): __dirname is shimmed by vitest
 // We use process.cwd() as primary fallback for schema.sql discovery
@@ -63,7 +74,10 @@ function recordMigration(db: Database.Database, version: number): void {
  * Find schema.sql file by trying multiple paths
  */
 function findSchemaPath(): string {
+  const resPath = getResourcesPath();
   const possiblePaths = [
+    // Packaged app: extraResources → resources/database/schema.sql
+    ...(resPath ? [join(resPath, 'database', 'schema.sql')] : []),
     // Running from src directory (development)
     join(__currentDir, 'schema.sql'),
     // Running from dist directory (compiled)
