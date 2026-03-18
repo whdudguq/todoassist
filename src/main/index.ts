@@ -15,11 +15,20 @@ import { app, BrowserWindow, dialog } from 'electron';
 import path from 'path';
 import fs from 'fs';
 
+// Debug logger — writes to userData/debug.log for production diagnostics
+function debugLog(msg: string): void {
+  try {
+    const logPath = path.join(app.getPath('userData'), 'debug.log');
+    fs.appendFileSync(logPath, `[${new Date().toISOString()}] ${msg}\n`);
+  } catch { /* ignore */ }
+}
+
 // Catch ALL uncaught errors and write to crash.log
 process.on('uncaughtException', (error) => {
   try {
     const logPath = path.join(app.getPath('userData'), 'crash.log');
     fs.appendFileSync(logPath, `[${new Date().toISOString()}] UNCAUGHT: ${error.stack}\n`);
+    debugLog(`UNCAUGHT: ${error.stack}`);
     dialog.showErrorBox('TodoAssist 오류', `${error.message}\n\n로그: ${logPath}`);
   } catch { /* ignore */ }
   app.quit();
@@ -55,17 +64,43 @@ import { registerAiHandlers } from './ipc/ai-handlers';
 let mainWindow: BrowserWindow | null = null;
 
 function createWindow(): void {
+  const preloadPath = path.join(__dirname, '../../preload/preload/index.js');
+  debugLog(`createWindow: __dirname=${__dirname}`);
+  debugLog(`createWindow: preload=${preloadPath} exists=${fs.existsSync(preloadPath)}`);
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 800,
     minHeight: 600,
+    show: false,
     webPreferences: {
-      preload: path.join(__dirname, '../../preload/preload/index.js'),
+      preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
     },
     title: 'TodoAssist',
+  });
+
+  mainWindow.once('ready-to-show', () => {
+    debugLog('createWindow: ready-to-show fired');
+    mainWindow?.show();
+  });
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    debugLog('createWindow: did-finish-load');
+  });
+
+  mainWindow.webContents.on('did-fail-load', (_e, code, desc, url) => {
+    debugLog(`createWindow: did-fail-load code=${code} desc=${desc} url=${url}`);
+  });
+
+  mainWindow.webContents.on('render-process-gone', (_e, details) => {
+    debugLog(`createWindow: render-process-gone reason=${details.reason} exitCode=${details.exitCode}`);
+  });
+
+  mainWindow.webContents.on('console-message', (_e, level, message) => {
+    if (level >= 2) debugLog(`renderer-console[${level}]: ${message}`);
   });
 
   if (!app.isPackaged) {
@@ -73,10 +108,14 @@ function createWindow(): void {
     mainWindow.webContents.openDevTools();
   } else {
     const indexPath = path.join(__dirname, '../../renderer/index.html');
-    mainWindow.loadFile(indexPath);
+    debugLog(`createWindow: loadFile=${indexPath} exists=${fs.existsSync(indexPath)}`);
+    mainWindow.loadFile(indexPath).catch((err) => {
+      debugLog(`createWindow: loadFile FAILED: ${err}`);
+    });
   }
 
   mainWindow.on('closed', () => {
+    debugLog('createWindow: window closed');
     mainWindow = null;
   });
 }
@@ -179,10 +218,15 @@ function writeCrashLog(error: unknown): void {
 }
 
 app.whenReady().then(() => {
+  debugLog('app.whenReady fired');
   try {
+    debugLog('bootstrap: start');
     bootstrap();
+    debugLog('bootstrap: done');
     createWindow();
+    debugLog('createWindow: called');
   } catch (error) {
+    debugLog(`STARTUP ERROR: ${error instanceof Error ? error.stack : String(error)}`);
     writeCrashLog(error);
     dialog.showErrorBox('TodoAssist 시작 오류', String(error));
     app.quit();
