@@ -63,7 +63,12 @@ export function Settings() {
 
   function handleSave() {
     const api = getApi();
-    if (!api) return;
+    if (!api) {
+      // Dev mode: settings are already live in the store — show confirmation
+      console.info('[Settings] Dev mode: settings are stored in memory (no IPC persistence).');
+      alert('설정이 저장되었습니다. (개발 모드: 메모리에만 저장됨)');
+      return;
+    }
 
     const store = useSettingStore.getState();
     const entries: Array<[string, unknown]> = [
@@ -122,7 +127,9 @@ export function Settings() {
   function handleTestApi() {
     const api = getApi();
     if (!api) {
-      console.log('[Settings] no api in test environment');
+      // Dev mode: simulate a successful API key test
+      console.info('[Settings] Dev mode: simulating API key test success.');
+      useSettingStore.getState().setApiValid(true);
       return;
     }
     api.ai.chat('test').then(() => {

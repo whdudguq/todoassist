@@ -13,6 +13,7 @@ import { TaskModal } from '@renderer/modals/TaskModal';
 import { AiAssistant } from '@renderer/components/AiAssistant';
 import { useTaskStore } from '@renderer/stores/taskStore';
 import { getApi } from '@renderer/hooks/useApi';
+import { useDevData } from '@renderer/hooks/useDevData';
 import type { Task } from '@shared/types';
 import type { TaskFormData } from '@renderer/components/TaskForm';
 
@@ -51,6 +52,8 @@ function ActivePage({ page }: { page: PageRoute }) {
 }
 
 export function AppShell() {
+  useDevData(); // Seeds mock data in dev mode (no-op in Electron)
+
   const currentPage = useUiStore((s) => s.currentPage);
   const aiAssistantOpen = useUiStore((s) => s.aiAssistantOpen);
   const setCurrentPage = useUiStore((s) => s.setCurrentPage);
@@ -112,6 +115,7 @@ export function AppShell() {
             const tempTask: Task = {
               id: crypto.randomUUID(),
               ...taskData,
+              importance: taskData.importance as Task['importance'],
               relatedClass: '',
               status: 'pending',
               progress: 0,

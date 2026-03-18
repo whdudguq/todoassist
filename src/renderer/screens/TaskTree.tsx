@@ -362,6 +362,17 @@ export function TaskTree() {
           task={contextMenu.task}
           onClose={handleCloseContextMenu}
           onDelete={handleDelete}
+          onQuickStart={(task) => {
+            updateTask(task.id, { status: 'in_progress' });
+            const api = getApi();
+            if (api) api.tasks.update(task.id, { status: 'in_progress' }).catch(console.error);
+          }}
+          onEdit={() => {
+            useUiStore.getState().openModal('taskModal');
+          }}
+          onAddSubtask={() => {
+            useUiStore.getState().openModal('taskModal');
+          }}
         />
       )}
     </div>

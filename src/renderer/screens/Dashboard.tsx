@@ -75,23 +75,23 @@ export function Dashboard() {
   }, []);
 
   const handleMicroStart = (id: string) => {
+    // Optimistic store update first
+    useTaskStore.getState().updateTask(id, { status: 'in_progress' });
+    // Persist via IPC if available
     const api = getApi();
-    if (!api) return;
-    api.tasks.update(id, { status: 'in_progress' }).then((updated) => {
-      if (updated) {
-        useTaskStore.getState().updateTask(id, { status: 'in_progress' });
-      }
-    }).catch(console.error);
+    if (api) {
+      api.tasks.update(id, { status: 'in_progress' }).catch(console.error);
+    }
   };
 
   const handleDefer = (id: string) => {
+    // Optimistic store update first
+    useTaskStore.getState().updateTask(id, { status: 'deferred' });
+    // Persist via IPC if available
     const api = getApi();
-    if (!api) return;
-    api.tasks.update(id, { status: 'deferred' }).then((updated) => {
-      if (updated) {
-        useTaskStore.getState().updateTask(id, { status: 'deferred' });
-      }
-    }).catch(console.error);
+    if (api) {
+      api.tasks.update(id, { status: 'deferred' }).catch(console.error);
+    }
   };
 
   if (isLoading) {

@@ -65,7 +65,11 @@ export function Kanban() {
 
   function handleAiSuggest() {
     const api = getApi();
-    if (!api) return;
+    if (!api) {
+      // Dev mode: no IPC available — show informational alert
+      alert('AI 스케줄 제안은 Electron 앱에서만 사용 가능합니다.');
+      return;
+    }
     api.timebox.aiGenerate(selectedDate).then((boxes) => {
       useTimeboxStore.getState().setTimeboxes(boxes as TimeBox[]);
     }).catch(console.error);
@@ -170,6 +174,11 @@ export function Kanban() {
                     size="sm"
                     className="w-full text-accent-600"
                     aria-label={`2분만 시작: ${task.title}`}
+                    onClick={() => {
+                      useTaskStore.getState().updateTask(task.id, { status: 'in_progress' });
+                      const api = getApi();
+                      if (api) api.tasks.update(task.id, { status: 'in_progress' }).catch(console.error);
+                    }}
                   >
                     2분만 시작
                   </Button>
