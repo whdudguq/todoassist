@@ -16,3 +16,6 @@ export type { DashboardState } from './dashboardStore';
 
 export { useStatsStore } from './statsStore';
 export type { StatsState, StatsPeriod } from './statsStore';
+
+export { useTimerStore } from './timerStore';
+export type { TimerEntry } from './timerStore';
