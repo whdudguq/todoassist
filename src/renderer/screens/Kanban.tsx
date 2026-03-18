@@ -208,6 +208,16 @@ export function Kanban() {
                         category={task.category}
                         status={task.status}
                         progress={task.progress}
+                        onMicroStart={() => {
+                          useTaskStore.getState().updateTask(task.id, { status: 'in_progress' });
+                          const api = getApi();
+                          if (api) api.tasks.update(task.id, { status: 'in_progress' }).catch(console.error);
+                        }}
+                        onDefer={() => {
+                          useTaskStore.getState().updateTask(task.id, { status: 'deferred' });
+                          const api = getApi();
+                          if (api) api.tasks.update(task.id, { status: 'deferred' }).catch(console.error);
+                        }}
                       />
                     </div>
                     {isSelected && (
