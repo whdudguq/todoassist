@@ -5,14 +5,15 @@ import { useSettingStore } from '@renderer/stores/settingStore';
 import { BasicSettings } from '@renderer/components/BasicSettings';
 import { CategoryManager } from '@renderer/components/CategoryManager';
 import { NotificationSettings } from '@renderer/components/NotificationSettings';
+import { UserGuide } from '@renderer/components/UserGuide';
 import { Button } from '@renderer/components/ui/button';
 import { cn } from '@renderer/lib/cn';
 import type { Category, Setting } from '@shared/types';
 import { getApi } from '@renderer/hooks/useApi';
 
-type TabKey = '기본' | '카테고리' | '알림';
+type TabKey = '기본' | '카테고리' | '알림' | '사용 설명서';
 
-const TABS: TabKey[] = ['기본', '카테고리', '알림'];
+const TABS: TabKey[] = ['기본', '카테고리', '알림', '사용 설명서'];
 
 export function Settings() {
   const [activeTab, setActiveTab] = useState<TabKey>('기본');
@@ -227,6 +228,8 @@ export function Settings() {
         )}
 
         {activeTab === '알림' && <NotificationSettings />}
+
+        {activeTab === '사용 설명서' && <UserGuide />}
       </div>
 
       {/* Footer: 저장 button */}
