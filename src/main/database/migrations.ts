@@ -138,11 +138,11 @@ CREATE TABLE IF NOT EXISTS DailyStats (
 );
 
 INSERT OR IGNORE INTO Category (id, name, color, icon, createdAt) VALUES
-  ('cat-001', '품질검사', '#FF6B6B', 'check_circle', 1710953200000),
-  ('cat-002', '보고서', '#4ECDC4', 'file_text', 1710953200000),
-  ('cat-003', '회의', '#45B7D1', 'users', 1710953200000),
-  ('cat-004', '이메일', '#FFA07A', 'mail', 1710953200000),
-  ('cat-005', '기타', '#95A5A6', 'bookmark', 1710953200000);
+  ('cat-001', '품질검사', '#FF6B6B', '✅', 1710953200000),
+  ('cat-002', '보고서', '#4ECDC4', '📝', 1710953200000),
+  ('cat-003', '회의', '#45B7D1', '👥', 1710953200000),
+  ('cat-004', '이메일', '#FFA07A', '📧', 1710953200000),
+  ('cat-005', '기타', '#95A5A6', '🔖', 1710953200000);
 
 INSERT OR IGNORE INTO Setting (id, key, value) VALUES
   ('set-001', 'workStartHour', '8'),
@@ -172,11 +172,27 @@ CREATE TABLE IF NOT EXISTS DailyReflection (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_reflection_date ON DailyReflection(date);
 `;
 
+/** Version 3: Migrate text icons to emoji */
+const V3_EMOJI_ICONS = `
+UPDATE Category SET icon = '✅' WHERE icon = 'check_circle';
+UPDATE Category SET icon = '📝' WHERE icon = 'file_text';
+UPDATE Category SET icon = '👥' WHERE icon = 'users';
+UPDATE Category SET icon = '📧' WHERE icon = 'mail';
+UPDATE Category SET icon = '🔖' WHERE icon = 'bookmark';
+`;
+
+/** Version 4: Add scheduledDate to Task */
+const V4_SCHEDULED_DATE = `
+ALTER TABLE Task ADD COLUMN scheduledDate INTEGER;
+CREATE INDEX IF NOT EXISTS idx_task_scheduledDate ON Task(scheduledDate);
+`;
+
+
 export function runMigrations(db: Database.Database): void {
   try {
     ensureMigrationsTable(db);
     const currentVersion = getCurrentVersion(db);
-    const targetVersion = 2;
+    const targetVersion = 4;
 
     if (currentVersion >= targetVersion) return;
 
@@ -195,6 +211,22 @@ export function runMigrations(db: Database.Database): void {
       })();
       console.log('[Migration] Applied version 2 (DailyReflection)');
     }
+
+    if (currentVersion < 3) {
+      db.transaction(() => {
+        db.exec(V3_EMOJI_ICONS);
+        recordMigration(db, 3);
+      })();
+      console.log('[Migration] Applied version 3 (emoji icons)');
+    }
+
+    if (currentVersion < 4) {
+      db.transaction(() => {
+        db.exec(V4_SCHEDULED_DATE);
+        recordMigration(db, 4);
+      })();
+      console.log('[Migration] Applied version 4 (scheduledDate)');
+    }
   } catch (error) {
     console.error('[Migration] Error:', error);
     throw error;
@@ -204,7 +236,7 @@ export function runMigrations(db: Database.Database): void {
 export function isMigrationComplete(db: Database.Database): boolean {
   try {
     ensureMigrationsTable(db);
-    return getCurrentVersion(db) >= 2;
+    return getCurrentVersion(db) >= 4;
   } catch {
     return false;
   }
@@ -221,8 +253,8 @@ export function getMigrationStatus(db: Database.Database): {
     const currentVersion = getCurrentVersion(db);
     return {
       currentVersion,
-      targetVersion: 2,
-      isComplete: currentVersion >= 2,
+      targetVersion: 3,
+      isComplete: currentVersion >= 3,
       appliedMigrations: db.prepare('SELECT version, appliedAt FROM _migrations ORDER BY version').all() as MigrationRecord[],
     };
   } catch {

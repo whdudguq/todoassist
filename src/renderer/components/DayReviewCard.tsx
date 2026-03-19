@@ -67,8 +67,12 @@ interface DayReviewCardProps {
   feedbackMid: string;
   feedbackEnd: string;
   onFeedbackChange: (phase: FeedbackPhase, value: string) => void;
+}
+
+export interface DeferredDetectorProps {
   deferredTasks: DeferredTask[];
   onMicroStart: (id: string) => void;
+  startDisabled?: boolean;
 }
 
 const feedbackValueMap: Record<FeedbackPhase, keyof Pick<DayReviewCardProps, 'feedbackStart' | 'feedbackMid' | 'feedbackEnd'>> = {
@@ -77,13 +81,60 @@ const feedbackValueMap: Record<FeedbackPhase, keyof Pick<DayReviewCardProps, 'fe
   end: 'feedbackEnd',
 };
 
+export function DeferredDetector({ deferredTasks, onMicroStart, startDisabled }: DeferredDetectorProps) {
+  if (deferredTasks.length === 0) return null;
+  return (
+    <Card data-testid="deferred-detector">
+      <CardContent className="flex flex-col gap-2 py-3">
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm" aria-hidden="true">⚠️</span>
+          <span className="text-xs font-semibold text-surface-500">미루기 탐지</span>
+        </div>
+        <div className="flex flex-col gap-2">
+          {deferredTasks.map((task) => (
+            <div key={task.id} className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <span
+                  className="h-2 w-2 rounded-full bg-[var(--color-warning-400,#facc15)] shrink-0"
+                  aria-hidden="true"
+                />
+                <span className="text-xs text-surface-700 truncate">{task.title}</span>
+                <span className="text-xs text-surface-400 shrink-0 whitespace-nowrap">
+                  {task.deferredDays}일째
+                </span>
+              </div>
+              <div className="flex flex-col items-end gap-0.5 shrink-0">
+                <button
+                  type="button"
+                  disabled={startDisabled}
+                  onClick={() => onMicroStart(task.id)}
+                  className={[
+                    'text-xs px-2 py-1 rounded-md',
+                    startDisabled ? 'bg-surface-300 text-surface-500 cursor-not-allowed' : 'bg-accent-500 text-white hover:bg-accent-600 active:bg-accent-700',
+                    'transition-colors duration-150',
+                    'whitespace-nowrap',
+                  ].join(' ')}
+                  aria-label={`${task.title} 시작하기`}
+                >
+                  시작
+                </button>
+                <span className="text-[10px] text-surface-400 leading-tight max-w-[100px] text-right">
+                  {getDayNudge(task.id)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function DayReviewCard({
   feedbackStart,
   feedbackMid,
   feedbackEnd,
   onFeedbackChange,
-  deferredTasks,
-  onMicroStart,
 }: DayReviewCardProps) {
   const hour = new Date().getHours();
   const activePhase = getActivePhase(hour);
@@ -146,51 +197,6 @@ export function DayReviewCard({
           })}
         </div>
 
-        {/* Deferred tasks section */}
-        {deferredTasks.length > 0 && (
-          <div className="flex flex-col gap-2 pt-1 border-t border-surface-200/60">
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm" aria-hidden="true">⚠️</span>
-              <span className="text-xs font-medium text-surface-400">미루기 탐지</span>
-            </div>
-            <div className="flex flex-col gap-2">
-              {deferredTasks.map((task) => (
-                <div key={task.id} className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {/* Yellow dot */}
-                    <span
-                      className="h-2 w-2 rounded-full bg-[var(--color-warning-400,#facc15)] shrink-0"
-                      aria-hidden="true"
-                    />
-                    <span className="text-xs text-surface-700 truncate">{task.title}</span>
-                    <span className="text-xs text-surface-400 shrink-0 whitespace-nowrap">
-                      {task.deferredDays}일째
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-end gap-0.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => onMicroStart(task.id)}
-                      className={[
-                        'text-xs px-2 py-1 rounded-md',
-                        'bg-accent-500 text-white',
-                        'hover:bg-accent-600 active:bg-accent-700',
-                        'transition-colors duration-150',
-                        'whitespace-nowrap',
-                      ].join(' ')}
-                      aria-label={`${task.title} 시작하기`}
-                    >
-                      시작
-                    </button>
-                    <span className="text-[10px] text-surface-400 leading-tight max-w-[100px] text-right">
-                      {getDayNudge(task.id)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
   );

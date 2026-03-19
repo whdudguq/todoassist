@@ -1,12 +1,12 @@
 // @TASK P1-S0 - AppShell: common layout (SidebarNav + main content + AI panel)
 // @SPEC docs/planning/03-user-flow.md
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { SidebarNav } from './ui/sidebar-nav';
 import { useUiStore, type PageRoute } from '@renderer/stores/uiStore';
 import { cn } from '@renderer/lib/cn';
 import { FocusDay } from '@renderer/screens/FocusDay';
 import { Dashboard } from '@renderer/screens/Dashboard';
-import { Kanban } from '@renderer/screens/Kanban';
+import { MonthCalendar } from '@renderer/screens/MonthCalendar';
 import { TaskTree } from '@renderer/screens/TaskTree';
 import { Statistics } from '@renderer/screens/Statistics';
 import { Settings } from '@renderer/screens/Settings';
@@ -15,13 +15,13 @@ import { AiAssistant } from '@renderer/components/AiAssistant';
 import { useTaskStore } from '@renderer/stores/taskStore';
 import { getApi } from '@renderer/hooks/useApi';
 import { useDevData } from '@renderer/hooks/useDevData';
-import type { Task } from '@shared/types';
+import type { Task, Category } from '@shared/types';
 import type { TaskFormData } from '@renderer/components/TaskForm';
 
 // Map SidebarNav route strings to PageRoute values
 const ROUTE_TO_PAGE: Record<string, PageRoute> = {
   '/': 'dashboard',
-  '/kanban': 'kanban',
+  '/calendar': 'calendar',
   '/tasks': 'taskTree',
   '/statistics': 'statistics',
   '/settings': 'settings',
@@ -29,7 +29,7 @@ const ROUTE_TO_PAGE: Record<string, PageRoute> = {
 
 const PAGE_TO_ROUTE: Record<PageRoute, string> = {
   dashboard: '/',
-  kanban: '/kanban',
+  calendar: '/calendar',
   taskTree: '/tasks',
   statistics: '/statistics',
   settings: '/settings',
@@ -39,8 +39,8 @@ function ActivePage({ page }: { page: PageRoute }) {
   switch (page) {
     case 'dashboard':
       return <FocusDay />;
-    case 'kanban':
-      return <Kanban />;
+    case 'calendar':
+      return <MonthCalendar />;
     case 'taskTree':
       return <TaskTree />;
     case 'statistics':
@@ -59,6 +59,30 @@ export function AppShell() {
   const aiAssistantOpen = useUiStore((s) => s.aiAssistantOpen);
   const setCurrentPage = useUiStore((s) => s.setCurrentPage);
   const toggleAiAssistant = useUiStore((s) => s.toggleAiAssistant);
+  const selectedTaskId = useTaskStore((s) => s.selectedTaskId);
+  const tasks = useTaskStore((s) => s.tasks);
+  const editingTask = selectedTaskId ? tasks.find((t) => t.id === selectedTaskId) : undefined;
+
+  const modalOpen = useUiStore((s) => s.modalOpen);
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  // ── 전역 데이터 로드: 태스크 + 카테고리 (한 번만) ──
+  useEffect(() => {
+    const api = getApi();
+    if (!api) return;
+    api.tasks.getAll().then((ts) => {
+      useTaskStore.getState().setTasks(ts as Task[]);
+    }).catch(console.error);
+    api.category.getAll().then((cats) => setCategories(cats as Category[])).catch(console.error);
+  }, []);
+
+  // 카테고리는 모달 열릴 때 갱신
+  useEffect(() => {
+    if (!modalOpen) return;
+    const api = getApi();
+    if (!api) return;
+    api.category.getAll().then((cats) => setCategories(cats as Category[])).catch(console.error);
+  }, [modalOpen]);
 
   function handleNavigate(route: string) {
     const page = ROUTE_TO_PAGE[route];
@@ -75,7 +99,7 @@ export function AppShell() {
       />
 
       {/* Main content area */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-hidden">
         <ActivePage page={currentPage} />
       </main>
 
@@ -95,10 +119,12 @@ export function AppShell() {
 
       {/* Task Modal (global) */}
       <TaskModal
-        categories={[]}
+        task={editingTask}
+        categories={categories}
         onSubmit={async (data: TaskFormData) => {
           const api = getApi();
-          const now = Date.now();
+          const selectedId = useTaskStore.getState().selectedTaskId;
+
           const taskData = {
             title: data.title,
             description: data.description || '',
@@ -108,25 +134,39 @@ export function AppShell() {
             category: data.category || '',
             parentId: data.parentId,
           };
-          if (api) {
-            const created = await api.tasks.create(taskData) as Task;
-            useTaskStore.getState().addTask(created);
+
+          if (selectedId) {
+            // Update existing task
+            if (api) {
+              const updated = await api.tasks.update(selectedId, taskData) as Task;
+              useTaskStore.getState().updateTask(selectedId, updated);
+            } else {
+              useTaskStore.getState().updateTask(selectedId, taskData);
+            }
           } else {
-            // Dev mode fallback: add to store with temp ID
-            const tempTask: Task = {
-              id: crypto.randomUUID(),
-              ...taskData,
-              importance: taskData.importance as Task['importance'],
-              relatedClass: '',
-              status: 'pending',
-              progress: 0,
-              templateId: null,
-              createdAt: now,
-              updatedAt: now,
-              completedAt: null,
-            };
-            useTaskStore.getState().addTask(tempTask);
+            // Create new task
+            if (api) {
+              const created = await api.tasks.create(taskData) as Task;
+              useTaskStore.getState().addTask(created);
+            } else {
+              const now = Date.now();
+              const tempTask: Task = {
+                id: crypto.randomUUID(),
+                ...taskData,
+                importance: taskData.importance as Task['importance'],
+                relatedClass: '',
+                status: 'pending',
+                progress: 0,
+                templateId: null,
+                createdAt: now,
+                updatedAt: now,
+                completedAt: null,
+                scheduledDate: null,
+              };
+              useTaskStore.getState().addTask(tempTask);
+            }
           }
+          useTaskStore.getState().setSelectedTask(null);
         }}
         onAiEstimate={async (title: string, desc?: string) => {
           const api = getApi();

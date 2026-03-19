@@ -132,18 +132,37 @@ export function Settings() {
 
   // ── BasicSettings callbacks ───────────────────────────────
 
+  const [apiTestStatus, setApiTestStatus] = useState<'idle' | 'testing' | 'success' | 'fail'>('idle');
+
   function handleTestApi() {
     const api = getApi();
     if (!api) {
-      // Dev mode: simulate a successful API key test
-      console.info('[Settings] Dev mode: simulating API key test success.');
       useSettingStore.getState().setApiValid(true);
+      setApiTestStatus('success');
       return;
     }
-    api.ai.chat('test').then(() => {
+
+    const currentKey = useSettingStore.getState().apiKey;
+    if (!currentKey) {
+      setApiTestStatus('fail');
+      setTimeout(() => setApiTestStatus('idle'), 3000);
+      return;
+    }
+
+    setApiTestStatus('testing');
+
+    // Save API key to DB first, then test
+    api.settings.update('claudeApiKey', JSON.stringify(currentKey)).then(() => {
+      return api.ai.chat('안녕');
+    }).then(() => {
       useSettingStore.getState().setApiValid(true);
-    }).catch(() => {
+      setApiTestStatus('success');
+      setTimeout(() => setApiTestStatus('idle'), 3000);
+    }).catch((err) => {
+      console.error('[Settings] API test failed:', err);
       useSettingStore.getState().setApiValid(false);
+      setApiTestStatus('fail');
+      setTimeout(() => setApiTestStatus('idle'), 3000);
     });
   }
 
@@ -194,6 +213,7 @@ export function Settings() {
             onTestApi={handleTestApi}
             onBackup={handleBackup}
             onRestore={handleRestore}
+            apiTestStatus={apiTestStatus}
           />
         )}
 

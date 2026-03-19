@@ -23,6 +23,7 @@ const MOCK_TASKS: Task[] = [
     createdAt: Date.now() - 3600000,
     updatedAt: Date.now() - 3600000,
     completedAt: null,
+    scheduledDate: null,
   },
   {
     id: 'mock-2',
@@ -40,6 +41,7 @@ const MOCK_TASKS: Task[] = [
     createdAt: Date.now() - 3000000,
     updatedAt: Date.now() - 3000000,
     completedAt: null,
+    scheduledDate: null,
   },
   {
     id: 'mock-3',
@@ -57,6 +59,7 @@ const MOCK_TASKS: Task[] = [
     createdAt: Date.now() - 2400000,
     updatedAt: Date.now() - 2400000,
     completedAt: null,
+    scheduledDate: null,
   },
   {
     id: 'mock-4',
@@ -74,6 +77,7 @@ const MOCK_TASKS: Task[] = [
     createdAt: Date.now() - 1800000,
     updatedAt: Date.now() - 1800000,
     completedAt: null,
+    scheduledDate: null,
   },
   {
     id: 'mock-5',
@@ -91,6 +95,7 @@ const MOCK_TASKS: Task[] = [
     createdAt: Date.now() - 7200000,
     updatedAt: Date.now() - 1200000,
     completedAt: null,
+    scheduledDate: null,
   },
 ];
 

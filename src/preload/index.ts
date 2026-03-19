@@ -48,6 +48,7 @@ const api = {
   },
   reflection: {
     getByDate: (date: string) => ipcRenderer.invoke(IPC_CHANNELS.REFLECTION.GET_BY_DATE, date),
+    getRange: (start: string, end: string) => ipcRenderer.invoke(IPC_CHANNELS.REFLECTION.GET_RANGE, start, end),
     upsert: (date: string, updates: unknown) => ipcRenderer.invoke(IPC_CHANNELS.REFLECTION.UPSERT, date, updates),
   },
   settings: {

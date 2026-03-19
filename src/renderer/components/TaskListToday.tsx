@@ -3,6 +3,7 @@ import type { Task } from '../../shared/types';
 import { Button } from './ui/button';
 import { ElapsedTimer } from './ElapsedTimer';
 import { useTimerStore } from '@renderer/stores/timerStore';
+import { microStart, hasActiveTask } from '@renderer/hooks/useMicroStart';
 import { cn } from '@renderer/lib/cn';
 
 interface TaskListTodayProps {
@@ -36,7 +37,6 @@ export function TaskListToday({ tasks, onMicroStart, onDefer, onPause, onResume,
   const [pauseInputId, setPauseInputId] = useState<string | null>(null);
   const [pauseReason, setPauseReason] = useState('');
   const timers = useTimerStore((s) => s.timers);
-  const startTimer = useTimerStore((s) => s.startTimer);
   const pauseTimer = useTimerStore((s) => s.pauseTimer);
   const resumeTimer = useTimerStore((s) => s.resumeTimer);
   const stopTimer = useTimerStore((s) => s.stopTimer);
@@ -44,7 +44,7 @@ export function TaskListToday({ tasks, onMicroStart, onDefer, onPause, onResume,
   const sorted = [...tasks].sort((a, b) => b.importance - a.importance).slice(0, 5);
 
   const handleMicroStart = (id: string) => {
-    startTimer(id);
+    microStart(id);
     onMicroStart(id);
   };
 
@@ -199,7 +199,7 @@ export function TaskListToday({ tasks, onMicroStart, onDefer, onPause, onResume,
                 </>
               ) : task.status === 'pending' && deferredId !== task.id ? (
                 <>
-                  <Button size="sm" variant="primary" onClick={() => handleMicroStart(task.id)} className="flex-1 text-xs">
+                  <Button size="sm" variant="primary" disabled={hasActiveTask()} onClick={() => handleMicroStart(task.id)} className="flex-1 text-xs">
                     2분만 시작
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => handleDefer(task.id)} className="flex-1 text-xs">
@@ -207,7 +207,7 @@ export function TaskListToday({ tasks, onMicroStart, onDefer, onPause, onResume,
                   </Button>
                 </>
               ) : isDeferred && !isCompleted ? (
-                <Button size="sm" variant="secondary" onClick={() => { handleMicroStart(task.id); }} className="flex-1 text-xs">
+                <Button size="sm" variant="secondary" disabled={hasActiveTask()} onClick={() => { handleMicroStart(task.id); }} className="flex-1 text-xs">
                   ▶ 다시 시작
                 </Button>
               ) : null}

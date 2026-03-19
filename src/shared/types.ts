@@ -36,6 +36,7 @@ export interface Task {
   createdAt: number;              // Unix timestamp (ms)
   updatedAt: number;
   completedAt: number | null;
+  scheduledDate: number | null;  // 캘린더 수행 예정일 (Unix timestamp ms)
 }
 
 /** TimeBox (30-min schedule slot) */
@@ -162,6 +163,7 @@ export const IPC_CHANNELS = {
   },
   REFLECTION: {
     GET_BY_DATE: 'reflection:getByDate',
+    GET_RANGE: 'reflection:getRange',
     UPSERT: 'reflection:upsert',
   },
   SETTINGS: {

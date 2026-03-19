@@ -61,14 +61,7 @@ describe('AppShell', () => {
     expect(screen.getByTestId('page-focusday')).toBeInTheDocument();
   });
 
-  it('renders kanban page when currentPage is kanban', () => {
-    useUiStore.setState({ currentPage: 'kanban' });
-    render(<AppShell />);
-    expect(screen.getByTestId('page-kanban')).toBeInTheDocument();
-    expect(screen.queryByTestId('page-focusday')).not.toBeInTheDocument();
-  });
-
-  it('renders taskTree page when currentPage is taskTree', () => {
+it('renders taskTree page when currentPage is taskTree', () => {
     useUiStore.setState({ currentPage: 'taskTree' });
     render(<AppShell />);
     expect(screen.getByTestId('page-taskTree')).toBeInTheDocument();

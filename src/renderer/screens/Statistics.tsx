@@ -1,6 +1,6 @@
 // @TASK P5-S5 - Statistics & Report screen
 // @SPEC docs/planning/03-user-flow.md#통계-리포트
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader } from '@renderer/components/ui/card';
 import { Button } from '@renderer/components/ui/button';
 import { Badge } from '@renderer/components/ui/badge';
@@ -9,7 +9,8 @@ import { StatsPieChart } from '@renderer/components/StatsPieChart';
 import { StatsBarChart } from '@renderer/components/StatsBarChart';
 import { useStatsStore, type StatsPeriod } from '@renderer/stores/statsStore';
 import { getApi } from '@renderer/hooks/useApi';
-import type { DailyStats } from '@shared/types';
+import { cn } from '@renderer/lib/cn';
+import type { DailyStats, DailyReflection } from '@shared/types';
 
 /** Returns YYYY-MM-DD date string offset by `deltaDays` from today */
 function dateString(deltaDays = 0): string {
@@ -110,7 +111,9 @@ export function Statistics() {
     customRange,
   } = useStatsStore();
 
-  // ── IPC: load stats range when period changes ────────────────────────────
+  const [reflections, setReflections] = useState<DailyReflection[]>([]);
+
+  // ── IPC: load stats + reflections when period changes ──────────────────
   useEffect(() => {
     const api = getApi();
     if (!api) return;
@@ -122,14 +125,21 @@ export function Statistics() {
 
     useStatsStore.getState().setLoading(true);
 
-    api.stats.getRange(start, end).then((raw) => {
-      const stats = raw as DailyStats[];
+    Promise.all([
+      api.stats.getRange(start, end),
+      api.reflection.getRange(start, end),
+    ]).then(([rawStats, rawReflections]) => {
+      const stats = rawStats as DailyStats[];
       useStatsStore.getState().setCompletionData(buildCompletionData(stats));
       useStatsStore.getState().setCategoryData(buildCategoryData(stats));
       useStatsStore.getState().setDeferralData(buildDeferralData(stats));
 
       const totalCompleted = stats.reduce((sum, s) => sum + s.completedCount, 0);
       useStatsStore.getState().setAccumulatedCompleted(totalCompleted);
+
+      setReflections((rawReflections as DailyReflection[]).filter(
+        (r) => r.gratitude || r.feedbackStart || r.feedbackMid || r.feedbackEnd,
+      ));
     }).catch(console.error).finally(() => {
       useStatsStore.getState().setLoading(false);
     });
@@ -240,6 +250,61 @@ export function Statistics() {
           </Card>
         </div>
       </div>
+
+      {/* 회고 기록 */}
+      {reflections.length > 0 && (
+        <section className="mt-4" aria-label="회고 기록">
+          <h2 className="text-sm font-semibold text-[var(--color-surface-700)] mb-3">
+            회고 기록
+          </h2>
+          <div className="flex flex-col gap-3">
+            {reflections.map((r) => (
+              <Card key={r.id}>
+                <CardContent className="py-3 flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-semibold text-accent-500">{r.date}</span>
+                  </div>
+
+                  {r.gratitude && (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[11px] font-medium text-[var(--color-surface-400)]">오늘의 마음</span>
+                      <p className="text-sm text-[var(--color-surface-700)] leading-relaxed pl-2 border-l-2 border-accent-300">
+                        {r.gratitude}
+                      </p>
+                    </div>
+                  )}
+
+                  {(r.feedbackStart || r.feedbackMid || r.feedbackEnd) && (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[11px] font-medium text-[var(--color-surface-400)]">하루 돌아보기</span>
+                      <div className="flex flex-col gap-1 pl-2 border-l-2 border-warning-300">
+                        {r.feedbackStart && (
+                          <div className="flex items-start gap-1.5">
+                            <span className={cn('mt-1.5 h-1.5 w-1.5 rounded-full bg-accent-400 shrink-0')} />
+                            <p className="text-sm text-[var(--color-surface-700)]">{r.feedbackStart}</p>
+                          </div>
+                        )}
+                        {r.feedbackMid && (
+                          <div className="flex items-start gap-1.5">
+                            <span className={cn('mt-1.5 h-1.5 w-1.5 rounded-full bg-warning-400 shrink-0')} />
+                            <p className="text-sm text-[var(--color-surface-700)]">{r.feedbackMid}</p>
+                          </div>
+                        )}
+                        {r.feedbackEnd && (
+                          <div className="flex items-start gap-1.5">
+                            <span className={cn('mt-1.5 h-1.5 w-1.5 rounded-full bg-surface-400 shrink-0')} />
+                            <p className="text-sm text-[var(--color-surface-700)]">{r.feedbackEnd}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* AI Insights */}
       <section

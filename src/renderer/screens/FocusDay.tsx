@@ -1,6 +1,6 @@
 // FocusDay - 3-column unified screen (Timeline + Focus + Stats)
 // Combines Dashboard + Kanban into a single view
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Sunrise, Sun, Moon } from 'lucide-react';
 import { cn } from '@renderer/lib/cn';
 import { Button } from '@renderer/components/ui/button';
@@ -9,16 +9,30 @@ import { Badge } from '@renderer/components/ui/badge';
 import { TimeGrid } from '@renderer/components/TimeGrid';
 import { ElapsedTimer } from '@renderer/components/ElapsedTimer';
 import { ProgressRing } from '@renderer/components/ProgressRing';
-import { MiniChart } from '@renderer/components/MiniChart';
 import { TodayMindCard } from '@renderer/components/TodayMindCard';
-import { DayReviewCard } from '@renderer/components/DayReviewCard';
+import { DayReviewCard, DeferredDetector } from '@renderer/components/DayReviewCard';
 import { useTimeboxStore } from '@renderer/stores/timeboxStore';
 import { useTaskStore } from '@renderer/stores/taskStore';
 import { useDashboardStore } from '@renderer/stores/dashboardStore';
 import { useTimerStore } from '@renderer/stores/timerStore';
 import { useReflectionStore } from '@renderer/stores/reflectionStore';
 import { getApi } from '@renderer/hooks/useApi';
+import { microStart, hasActiveTask } from '@renderer/hooks/useMicroStart';
 import type { Task, TimeBox, DailyStats, DailyReflection } from '@shared/types';
+
+const PAUSE_REASONS = [
+  '잠깐 쉬는 중',
+  '전화/회의 참석',
+  '다른 일이 더 급해요',
+] as const;
+
+function toDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function isLeafTask(task: Task, allTasks: Task[]): boolean {
+  return !allTasks.some((t) => t.parentId === task.id);
+}
 
 function todayString(): string {
   const d = new Date();
@@ -55,23 +69,66 @@ export function FocusDay() {
   const resumeTimer = useTimerStore((s) => s.resumeTimer);
   const stopTimer = useTimerStore((s) => s.stopTimer);
 
-  const { dailyStats, aiGreeting, accumulatedCompleted, weeklyData } = useDashboardStore();
+  const { dailyStats, aiGreeting, accumulatedCompleted } = useDashboardStore();
   const reflection = useReflectionStore((s) => s.reflection);
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [pauseInputId, setPauseInputId] = useState<string | null>(null);
   const [pauseReason, setPauseReason] = useState('');
-  const gratitudeTimer = useRef<ReturnType<typeof setTimeout>>();
-  const feedbackTimer = useRef<ReturnType<typeof setTimeout>>();
+  const [switchedTaskIds, setSwitchedTaskIds] = useState<string[]>([]);
+  const gratitudeTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const feedbackTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  // ── IPC: load data on mount ──
+  // ── Split pane resize ──
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [splitLeft, setSplitLeft] = useState(45); // Column 1 width %
+  const [splitRight, setSplitRight] = useState(75); // Column 1+2 boundary %
+
+  const dragging = useRef<'left' | 'right' | null>(null);
+
+  const handlePointerDown = useCallback((which: 'left' | 'right') => {
+    dragging.current = which;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }, []);
+
+  useEffect(() => {
+    function onPointerMove(e: PointerEvent) {
+      if (!dragging.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const pct = ((e.clientX - rect.left) / rect.width) * 100;
+
+      if (dragging.current === 'left') {
+        // Column 1: min 25%, max (splitRight - 15%)
+        setSplitLeft(Math.max(25, Math.min(pct, splitRight - 15)));
+      } else {
+        // Column 1+2 boundary: min (splitLeft + 15%), max 90%
+        setSplitRight(Math.max(splitLeft + 15, Math.min(pct, 90)));
+      }
+    }
+    function onPointerUp() {
+      if (dragging.current) {
+        dragging.current = null;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      }
+    }
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    return () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+    };
+  }, [splitLeft, splitRight]);
+
+  const col1Width = `${splitLeft}%`;
+  const col2Width = `${splitRight - splitLeft}%`;
+  const col3Width = `${100 - splitRight}%`;
+
+  // ── IPC: load data on mount (태스크는 AppShell에서 전역 로드) ──
   useEffect(() => {
     const api = getApi();
     if (!api) return;
-
-    api.tasks.getAll().then((ts) => {
-      useTaskStore.getState().setTasks(ts as Task[]);
-    }).catch(console.error);
 
     const today = todayString();
     api.stats.getDaily(today).then((stats) => {
@@ -107,9 +164,20 @@ export function FocusDay() {
   const activeTask = tasks.find((t) => t.status === 'in_progress' && timers[t.id]);
   const activeTimer = activeTask ? timers[activeTask.id] : null;
 
-  // Unscheduled tasks: not completed, not deferred, not yet on today's timeline
+  // Switched tasks — "다른 일이 더 급해요"로 pending된 태스크 (음영 카드)
+  const switchedTasks = switchedTaskIds
+    .map((id) => tasks.find((t) => t.id === id))
+    .filter((t): t is Task => !!t && t.status === 'pending');
+
+  // Unscheduled tasks: scheduledDate가 selectedDate와 일치하는 리프 태스크만
   const unscheduledTasks = tasks.filter(
-    (t) => t.status !== 'completed' && t.status !== 'deferred' && !scheduledIds.has(t.id),
+    (t) =>
+      t.status !== 'completed' &&
+      t.status !== 'deferred' &&
+      !scheduledIds.has(t.id) &&
+      t.scheduledDate &&
+      toDateStr(new Date(t.scheduledDate)) === selectedDate &&
+      isLeafTask(t, tasks),
   );
 
   // Next up: scheduled tasks that are pending (not yet started)
@@ -168,10 +236,11 @@ export function FocusDay() {
   }
 
   function handleMicroStart(id: string) {
-    startTimer(id);
-    useTaskStore.getState().updateTask(id, { status: 'in_progress' });
-    const api = getApi();
-    if (api) api.tasks.update(id, { status: 'in_progress' }).catch(console.error);
+    const started = microStart(id);
+    if (started) {
+      // 시작된 태스크가 switched 목록에 있었으면 제거
+      setSwitchedTaskIds((prev) => prev.filter((tid) => tid !== id));
+    }
   }
 
   function handlePauseClick(id: string) {
@@ -180,7 +249,26 @@ export function FocusDay() {
   }
 
   function handlePauseConfirm(id: string) {
-    pauseTimer(id, pauseReason || '잠깐 쉬는 중');
+    const reason = pauseReason || '잠깐 쉬는 중';
+    if (reason === '다른 일이 더 급해요') {
+      // 이미 대기 중인 태스크가 있으면 차단
+      if (switchedTaskIds.length > 0) {
+        alert('이미 대기 중인 태스크가 있어요. 먼저 대기 중인 태스크를 완료하거나 닫아주세요.');
+        setPauseInputId(null);
+        setPauseReason('');
+        return;
+      }
+      // 정지 → pending 복귀 (다른 태스크 시작 가능) + 음영 카드 유지
+      pauseTimer(id, reason);
+      stopTimer(id);
+      useTaskStore.getState().updateTask(id, { status: 'pending' });
+      const api = getApi();
+      if (api) api.tasks.update(id, { status: 'pending' }).catch(console.error);
+      setSwitchedTaskIds((prev) => [...prev, id]);
+    } else {
+      // 일시정지 (여전히 in_progress, 다른 태스크 차단 유지)
+      pauseTimer(id, reason);
+    }
     setPauseInputId(null);
     setPauseReason('');
   }
@@ -249,9 +337,9 @@ export function FocusDay() {
     .slice(0, 3);
 
   return (
-    <div data-testid="page-focusday" className="flex h-full overflow-hidden bg-surface-50">
-      {/* ═══ Column 1: Timeline (45%) ═══ */}
-      <div className="flex-[45] flex flex-col overflow-hidden border-r border-surface-200/60">
+    <div ref={containerRef} data-testid="page-focusday" className="flex h-full overflow-hidden bg-surface-50">
+      {/* ═══ Column 1: Timeline ═══ */}
+      <div style={{ width: col1Width }} className="flex flex-col min-h-0 overflow-hidden shrink-0">
         {/* Date navigator */}
         <header className="flex items-center justify-between px-4 py-2.5 bg-surface-0 border-b border-surface-200/60 shrink-0">
           <div className="flex items-center gap-2" data-testid="date-navigator">
@@ -268,7 +356,7 @@ export function FocusDay() {
         </header>
 
         {/* TimeGrid */}
-        <div className="flex-1 overflow-y-auto px-4 py-3">
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 pb-16">
           <TimeGrid
             timeboxes={todayBoxes}
             onSlotClick={handleSlotClick}
@@ -278,8 +366,14 @@ export function FocusDay() {
         </div>
       </div>
 
-      {/* ═══ Column 2: Focus (30%) ═══ */}
-      <div className="flex-[30] flex flex-col overflow-y-auto border-r border-surface-200/60">
+      {/* ── Drag handle 1 ── */}
+      <div
+        className="w-1 shrink-0 cursor-col-resize bg-surface-200/60 hover:bg-accent-400 active:bg-accent-500 transition-colors"
+        onPointerDown={() => handlePointerDown('left')}
+      />
+
+      {/* ═══ Column 2: Focus ═══ */}
+      <div style={{ width: col2Width }} className="flex flex-col min-h-0 overflow-y-auto shrink-0">
         <div className="flex flex-col gap-3 p-4">
           {/* AI Greeting */}
           <div className="flex items-center gap-2 px-3 py-2.5 bg-surface-0 rounded-xl border border-surface-200/60">
@@ -305,26 +399,27 @@ export function FocusDay() {
 
                 <ElapsedTimer taskId={activeTask.id} estimatedMinutes={activeTask.estimatedMinutes} />
 
-                {/* Pause reason input */}
+                {/* Pause reason dropdown */}
                 {pauseInputId === activeTask.id && (
                   <div className="flex flex-col gap-1.5 p-2 bg-surface-50 rounded-lg border border-surface-200">
                     <label className="text-[11px] text-surface-500 font-medium">정지 사유</label>
-                    <input
-                      type="text"
+                    <select
                       value={pauseReason}
                       onChange={(e) => setPauseReason(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') handlePauseConfirm(activeTask.id); }}
-                      placeholder="예: 전화 받는 중, 회의 참석..."
                       autoFocus
                       className={cn(
                         'w-full px-2.5 py-1.5 text-xs rounded-md',
                         'bg-surface-0 border border-surface-200',
                         'focus:outline-none focus:border-accent-400',
-                        'placeholder:text-surface-300',
                       )}
-                    />
+                    >
+                      <option value="">사유를 선택하세요</option>
+                      {PAUSE_REASONS.map((reason) => (
+                        <option key={reason} value={reason}>{reason}</option>
+                      ))}
+                    </select>
                     <div className="flex gap-1.5">
-                      <Button size="sm" variant="secondary" className="flex-1 text-xs" onClick={() => handlePauseConfirm(activeTask.id)}>
+                      <Button size="sm" variant="secondary" className="flex-1 text-xs" disabled={!pauseReason} onClick={() => handlePauseConfirm(activeTask.id)}>
                         확인
                       </Button>
                       <Button size="sm" variant="ghost" className="text-xs" onClick={() => setPauseInputId(null)}>
@@ -360,14 +455,51 @@ export function FocusDay() {
                 )}
               </CardContent>
             </Card>
-          ) : (
+          ) : switchedTasks.length === 0 ? (
             <Card className="border-surface-200/60">
               <CardContent className="py-4 text-center">
                 <p className="text-xs text-surface-400">진행 중인 태스크가 없어요</p>
                 <p className="text-[11px] text-surface-300 mt-1">아래에서 "2분만 시작"을 눌러보세요</p>
               </CardContent>
             </Card>
-          )}
+          ) : null}
+
+          {/* Switched (대기 중) task cards — 음영 처리 */}
+          {switchedTasks.map((task) => (
+            <Card key={task.id} className="border-surface-300/60 bg-surface-100/60 opacity-60">
+              <CardContent className="flex flex-col gap-2 py-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-surface-400">대기 중</span>
+                  <Badge variant="outline" className="text-[10px]">
+                    다른 일 진행 중
+                  </Badge>
+                </div>
+                <h3 className="text-sm font-medium text-surface-500">{task.title}</h3>
+                {task.description && (
+                  <p className="text-xs text-surface-400 line-clamp-1">{task.description}</p>
+                )}
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="flex-1 text-xs"
+                    disabled={!!activeTask}
+                    onClick={() => handleMicroStart(task.id)}
+                  >
+                    이어서 하기
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="flex-1 text-xs text-surface-400"
+                    onClick={() => setSwitchedTaskIds((prev) => prev.filter((id) => id !== task.id))}
+                  >
+                    카드 닫기
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
 
           {/* Upcoming scheduled tasks */}
           {upcomingTasks.length > 0 && (
@@ -385,6 +517,7 @@ export function FocusDay() {
                     size="sm"
                     variant="ghost"
                     className="text-[10px] text-accent-500 px-1.5 py-0.5 h-auto"
+                    disabled={!!activeTask}
                     onClick={() => handleMicroStart(task.id)}
                   >
                     시작
@@ -397,7 +530,7 @@ export function FocusDay() {
           {/* Unscheduled tasks */}
           <div className="flex flex-col gap-1.5">
             <h4 className="text-xs font-semibold text-surface-500 uppercase tracking-wider px-1">
-              미배치 ({unscheduledTasks.length})
+              {selectedDate} 배정 태스크 ({unscheduledTasks.length})
             </h4>
             {unscheduledTasks.length === 0 ? (
               <p className="text-xs text-surface-400 text-center py-3">모든 태스크가 배치되었습니다</p>
@@ -431,6 +564,7 @@ export function FocusDay() {
                         size="sm"
                         variant="primary"
                         className="text-[10px] px-2 py-1 h-auto shrink-0"
+                        disabled={!!activeTask}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleMicroStart(task.id);
@@ -449,11 +583,24 @@ export function FocusDay() {
               })
             )}
           </div>
+
+          {/* Deferred detector — 미루기 탐지 */}
+          <DeferredDetector
+            deferredTasks={deferredTasksList}
+            onMicroStart={handleMicroStart}
+            startDisabled={!!activeTask}
+          />
         </div>
       </div>
 
-      {/* ═══ Column 3: Stats (25%) ═══ */}
-      <div className="flex-[25] flex flex-col overflow-y-auto">
+      {/* ── Drag handle 2 ── */}
+      <div
+        className="w-1 shrink-0 cursor-col-resize bg-surface-200/60 hover:bg-accent-400 active:bg-accent-500 transition-colors"
+        onPointerDown={() => handlePointerDown('right')}
+      />
+
+      {/* ═══ Column 3: Stats ═══ */}
+      <div style={{ width: col3Width }} className="flex flex-col min-h-0 overflow-y-auto shrink-0">
         <div className="flex flex-col gap-4 p-4">
           {/* Completion rate */}
           <Card>
@@ -479,14 +626,6 @@ export function FocusDay() {
             </CardContent>
           </Card>
 
-          {/* Weekly chart */}
-          <Card>
-            <CardContent className="flex flex-col gap-1.5 py-3">
-              <h4 className="text-xs font-semibold text-surface-500">이번 주</h4>
-              <MiniChart data={weeklyData} />
-            </CardContent>
-          </Card>
-
           {/* 오늘의 마음 (Cogito: 감사 + 내적동기) */}
           <TodayMindCard
             gratitude={reflection?.gratitude ?? ''}
@@ -499,8 +638,6 @@ export function FocusDay() {
             feedbackMid={reflection?.feedbackMid ?? ''}
             feedbackEnd={reflection?.feedbackEnd ?? ''}
             onFeedbackChange={handleFeedbackChange}
-            deferredTasks={deferredTasksList}
-            onMicroStart={handleMicroStart}
           />
         </div>
       </div>

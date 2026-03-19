@@ -10,9 +10,10 @@ interface BasicSettingsProps {
   onTestApi: () => void;
   onBackup: () => void;
   onRestore: () => void;
+  apiTestStatus?: 'idle' | 'testing' | 'success' | 'fail';
 }
 
-export function BasicSettings({ onTestApi, onBackup, onRestore }: BasicSettingsProps) {
+export function BasicSettings({ onTestApi, onBackup, onRestore, apiTestStatus = 'idle' }: BasicSettingsProps) {
   const {
     userName,
     workHoursStart,
@@ -126,10 +127,17 @@ export function BasicSettings({ onTestApi, onBackup, onRestore }: BasicSettingsP
               variant="secondary"
               size="sm"
               onClick={onTestApi}
+              disabled={apiTestStatus === 'testing'}
             >
-              연결 테스트
+              {apiTestStatus === 'testing' ? '테스트 중...' : '연결 테스트'}
             </Button>
-            {isApiValid && (
+            {apiTestStatus === 'success' && (
+              <span className="text-xs text-success-600">연결 성공!</span>
+            )}
+            {apiTestStatus === 'fail' && (
+              <span className="text-xs text-red-500">연결 실패 — API 키를 확인하세요</span>
+            )}
+            {apiTestStatus === 'idle' && isApiValid && (
               <span className="text-xs text-success-600">연결됨</span>
             )}
           </div>

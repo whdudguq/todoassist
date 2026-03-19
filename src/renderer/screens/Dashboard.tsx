@@ -68,15 +68,10 @@ export function Dashboard() {
       return { id: t.id, title: t.title, deferredDays };
     });
 
-  // ── IPC: load data on mount ────────────────────────────────────────────────
+  // ── IPC: load data on mount (태스크는 AppShell에서 전역 로드) ──
   useEffect(() => {
     const api = getApi();
     if (!api) return;
-
-    // Load all tasks into task store
-    api.tasks.getAll().then((tasks) => {
-      useTaskStore.getState().setTasks(tasks as Task[]);
-    }).catch(console.error);
 
     // Load today's daily stats
     api.stats.getDaily(today).then((stats) => {
@@ -284,8 +279,6 @@ export function Dashboard() {
             feedbackMid={reflection?.feedbackMid ?? ''}
             feedbackEnd={reflection?.feedbackEnd ?? ''}
             onFeedbackChange={handleFeedbackChange}
-            deferredTasks={deferredTasksList}
-            onMicroStart={handleMicroStart}
           />
         </div>
       </div>

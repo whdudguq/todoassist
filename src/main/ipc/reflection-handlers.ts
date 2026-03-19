@@ -21,6 +21,11 @@ export function registerReflectionHandlers(service: ReflectionCrudService): void
     return service.getByDate(date);
   });
 
+  // @TASK P-REFLECTION - reflection:getRange
+  ipcMain.handle(IPC_CHANNELS.REFLECTION.GET_RANGE, (_event, start: string, end: string) => {
+    return service.getRange(start, end);
+  });
+
   // @TASK P-REFLECTION - reflection:upsert
   ipcMain.handle(
     IPC_CHANNELS.REFLECTION.UPSERT,

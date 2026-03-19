@@ -59,6 +59,14 @@ export class ReflectionCrudService {
     return row ? rowToReflection(row) : null;
   }
 
+  getRange(startDate: string, endDate: string): DailyReflection[] {
+    const rows = this.db.prepare(
+      'SELECT * FROM DailyReflection WHERE date >= ? AND date <= ? ORDER BY date DESC'
+    ).all(startDate, endDate) as DailyReflectionRow[];
+
+    return rows.map(rowToReflection);
+  }
+
   /**
    * Upsert a reflection for a given date
    * - If no reflection exists, creates a new one with crypto.randomUUID()

@@ -4,13 +4,14 @@ import { cn } from '@renderer/lib/cn';
 import { Button } from '@renderer/components/ui/button';
 import { TaskCard } from '@renderer/components/ui/task-card';
 import { useTaskStore } from '@renderer/stores/taskStore';
+import { microStart, hasActiveTask } from '@renderer/hooks/useMicroStart';
 import { getApi } from '@renderer/hooks/useApi';
 import type { TimeBox } from '@shared/types';
 import { Sparkles } from 'lucide-react';
 
 // Work hours configuration
 export const WORK_START = 18; // slot 18 = 09:00
-export const WORK_END = 38;   // slot 38 = 19:00 (exclusive)
+export const WORK_END = 42;   // slot 42 = 21:00 (exclusive)
 const LUNCH_SLOTS = [24, 25]; // 12:00-13:00
 
 /**
@@ -68,7 +69,7 @@ export function TimeGrid({ timeboxes, onSlotClick, onAiSuggest, hasSelectedTask,
       </div>
 
       {/* Time slots */}
-      <div className="flex flex-col border border-surface-200/60 rounded-xl overflow-hidden">
+      <div className="flex flex-col border border-surface-200/60 rounded-xl overflow-visible">
         {slots.map((slot) => {
           const isLunch = LUNCH_SLOTS.includes(slot);
           const timeboxesInSlot = slotMap.get(slot) ?? [];
@@ -149,10 +150,9 @@ export function TimeGrid({ timeboxes, onSlotClick, onAiSuggest, hasSelectedTask,
                         progress={task.progress}
                         className={cn('flex-1 !py-2 !px-3', slotSpan > 1 && 'absolute left-2 right-2 z-10')}
                         style={cardHeight ? { height: `${cardHeight}px`, top: 0 } : undefined}
+                        startDisabled={hasActiveTask()}
                         onMicroStart={() => {
-                          useTaskStore.getState().updateTask(task.id, { status: 'in_progress' });
-                          const api = getApi();
-                          if (api) api.tasks.update(task.id, { status: 'in_progress' }).catch(console.error);
+                          microStart(task.id);
                         }}
                         onDefer={() => {
                           useTaskStore.getState().updateTask(task.id, { status: 'deferred' });

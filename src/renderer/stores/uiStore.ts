@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 
-export type PageRoute = 'dashboard' | 'kanban' | 'taskTree' | 'statistics' | 'settings';
+export type PageRoute = 'dashboard' | 'calendar' | 'taskTree' | 'statistics' | 'settings';
 
 interface UiState {
   sidebarOpen: boolean;

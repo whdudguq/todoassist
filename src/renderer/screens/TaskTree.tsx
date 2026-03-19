@@ -5,7 +5,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Search, Plus, BookmarkPlus, BookOpen } from 'lucide-react';
 import { useTaskStore } from '@renderer/stores/taskStore';
 import type { SortOption, TaskFilter } from '@renderer/stores/taskStore';
-import type { Task, TaskStatus, Importance } from '@shared/types';
+import type { Task, TaskStatus, Importance, Category } from '@shared/types';
 import { TreeView } from '@renderer/components/TreeView';
 import { ContextMenu } from '@renderer/components/ContextMenu';
 import { Button } from '@renderer/components/ui/button';
@@ -46,14 +46,7 @@ const IMPORTANCE_OPTIONS: { value: Importance; label: string }[] = [
   { value: 1, label: '★' },
 ];
 
-const CATEGORY_OPTIONS = [
-  { value: '', label: '전체 카테고리' },
-  { value: 'quality', label: '품질' },
-  { value: 'report', label: '보고서' },
-  { value: 'meeting', label: '회의' },
-  { value: 'email', label: '이메일' },
-  { value: 'other', label: '기타' },
-];
+// 카테고리는 DB에서 동적 로드 (Settings 카테고리 관리와 연동)
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -106,14 +99,15 @@ export function TaskTree() {
     useTaskStore();
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   // ── IPC: load tasks and categories on mount ──────────────────────────────
+  // 카테고리 로드 (태스크는 AppShell에서 전역 로드)
   useEffect(() => {
     const api = getApi();
     if (!api) return;
-
-    api.tasks.getAll().then((tasks) => {
-      useTaskStore.getState().setTasks(tasks as Task[]);
+    api.category.getAll().then((cats) => {
+      setCategories(cats as Category[]);
     }).catch(console.error);
   }, []);
 
@@ -271,9 +265,10 @@ export function TaskTree() {
                   'focus:outline-none focus:border-accent-400',
                 )}
               >
-                {CATEGORY_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
+                <option value="">전체 카테고리</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.name}>
+                    {cat.icon} {cat.name}
                   </option>
                 ))}
               </select>
@@ -367,10 +362,12 @@ export function TaskTree() {
             const api = getApi();
             if (api) api.tasks.update(task.id, { status: 'in_progress' }).catch(console.error);
           }}
-          onEdit={() => {
+          onEdit={(task) => {
+            useTaskStore.getState().setSelectedTask(task.id);
             useUiStore.getState().openModal('taskModal');
           }}
-          onAddSubtask={() => {
+          onAddSubtask={(task) => {
+            useTaskStore.getState().setSelectedTask(null);
             useUiStore.getState().openModal('taskModal');
           }}
         />

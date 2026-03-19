@@ -19,6 +19,7 @@ interface TaskCardProps {
   onMicroStart?: () => void;
   onDefer?: () => void;
   onClick?: () => void;
+  startDisabled?: boolean;
   style?: React.CSSProperties;
   className?: string;
 }
@@ -40,7 +41,7 @@ const categoryBorderMap: Record<string, string> = {
 
 function ImportanceIndicator({ level }: { level: number }) {
   return (
-    <div className="flex gap-0.5" aria-label={`importance ${level} of 5`}>
+    <div className="flex gap-0.5" aria-label={`중요도 ${level}/5`}>
       {Array.from({ length: 5 }, (_, i) => (
         <div
           key={i}
@@ -60,6 +61,7 @@ export function TaskCard({
   estimatedMinutes,
   importance,
   category,
+  categoryColor,
   status,
   progress,
   deadline,
@@ -67,16 +69,17 @@ export function TaskCard({
   onMicroStart,
   onDefer,
   onClick,
+  startDisabled,
   style,
   className,
 }: TaskCardProps) {
-  const borderClass = categoryBorderMap[category] ?? categoryBorderMap.default;
+  const borderClass = categoryColor ? '' : (categoryBorderMap[category] ?? categoryBorderMap.default);
   const isCompleted = status === 'completed';
 
   return (
     <div
       onClick={onClick}
-      style={style}
+      style={{ ...style, ...(categoryColor ? { borderLeftColor: categoryColor } : {}) }}
       className={cn(
         'group relative',
         'border border-surface-200/60 border-l-[3px] rounded-xl',
@@ -114,7 +117,7 @@ export function TaskCard({
       <div className="flex items-center gap-3 mb-3 text-xs text-surface-400">
         <span className="inline-flex items-center gap-1">
           <Clock size={12} strokeWidth={2} />
-          {estimatedMinutes}min
+          {estimatedMinutes}분
         </span>
         {deadline && (
           <span className="inline-flex items-center gap-1">
@@ -125,7 +128,7 @@ export function TaskCard({
         {hasChildren && (
           <span className="inline-flex items-center gap-1">
             <CornerDownRight size={12} strokeWidth={2} />
-            subtasks
+            하위 태스크
           </span>
         )}
       </div>
@@ -133,20 +136,21 @@ export function TaskCard({
       {/* Progress */}
       {progress > 0 && <ProgressBar value={progress} className="mb-3" />}
 
-      {/* Actions — visible on hover */}
-      {!isCompleted && (
-        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+      {/* Actions — visible on hover (hide for in_progress and completed) */}
+      {status === 'pending' && (
+        <div className="flex gap-2">
           <Button
             variant="primary"
             size="sm"
             className="flex-1"
+            disabled={startDisabled}
             onClick={(e) => {
               e.stopPropagation();
               onMicroStart?.();
             }}
           >
             <Play size={12} strokeWidth={2.5} />
-            2min start
+            2분만 시작
           </Button>
           <Button
             variant="ghost"
@@ -157,7 +161,7 @@ export function TaskCard({
               onDefer?.();
             }}
           >
-            not now
+            지금 안 할래요
           </Button>
         </div>
       )}
@@ -166,7 +170,7 @@ export function TaskCard({
       {status === 'in_progress' && (
         <Badge variant="warning" className="absolute top-3 right-3">
           <span className="w-1.5 h-1.5 rounded-full bg-warning-500 animate-pulse" />
-          in progress
+          진행 중
         </Badge>
       )}
     </div>

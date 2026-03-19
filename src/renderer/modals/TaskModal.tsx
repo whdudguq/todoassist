@@ -23,26 +23,31 @@ interface TaskModalProps {
 }
 
 export function TaskModal({ task, categories, onSubmit, onAiEstimate }: TaskModalProps) {
-  const { modalOpen, closeModal } = useUiStore();
+  const modalOpen = useUiStore((s) => s.modalOpen);
   const { tasks } = useTaskStore();
 
   const isOpen = modalOpen === 'taskModal';
+
+  function close() {
+    useTaskStore.getState().setSelectedTask(null);
+    useUiStore.getState().closeModal();
+  }
 
   // Escape 키로 닫기
   useEffect(() => {
     if (!isOpen) return;
     function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') closeModal();
+      if (e.key === 'Escape') close();
     }
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [isOpen, closeModal]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   function handleSubmit(data: TaskFormData) {
     onSubmit(data);
-    closeModal();
+    close();
   }
 
   return (
@@ -58,8 +63,7 @@ export function TaskModal({ task, categories, onSubmit, onAiEstimate }: TaskModa
         'animate-in fade-in duration-150',
       )}
       onClick={(e) => {
-        // 배경 클릭 시 닫기
-        if (e.target === e.currentTarget) closeModal();
+        if (e.target === e.currentTarget) close();
       }}
     >
       {/* 모달 패널 */}
@@ -82,7 +86,7 @@ export function TaskModal({ task, categories, onSubmit, onAiEstimate }: TaskModa
           </h2>
           <button
             type="button"
-            onClick={closeModal}
+            onClick={close}
             aria-label="닫기"
             className={cn(
               'h-7 w-7 flex items-center justify-center rounded-lg',
@@ -101,7 +105,7 @@ export function TaskModal({ task, categories, onSubmit, onAiEstimate }: TaskModa
             categories={categories}
             tasks={tasks}
             onSubmit={handleSubmit}
-            onCancel={closeModal}
+            onCancel={close}
             onAiEstimate={onAiEstimate}
           />
         </div>

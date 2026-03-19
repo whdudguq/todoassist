@@ -1,6 +1,6 @@
 import {
   LayoutDashboard,
-  Columns3,
+  CalendarDays,
   GitBranch,
   BarChart3,
   Settings,
@@ -17,7 +17,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { id: 'dashboard', label: 'FocusDay', icon: LayoutDashboard, route: '/' },
-  { id: 'kanban', label: 'Kanban', icon: Columns3, route: '/kanban' },
+  { id: 'calendar', label: '월간 캘린더', icon: CalendarDays, route: '/calendar' },
   { id: 'tasks', label: 'Tasks', icon: GitBranch, route: '/tasks' },
   { id: 'stats', label: 'Statistics', icon: BarChart3, route: '/statistics' },
   { id: 'settings', label: 'Settings', icon: Settings, route: '/settings' },

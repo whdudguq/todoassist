@@ -58,6 +58,7 @@ interface TaskRow {
   createdAt: number;
   updatedAt: number;
   completedAt: number | null;
+  scheduledDate: number | null;
 }
 
 function rowToTask(row: TaskRow): Task {
@@ -77,6 +78,7 @@ function rowToTask(row: TaskRow): Task {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     completedAt: row.completedAt,
+    scheduledDate: row.scheduledDate,
   };
 }
 
