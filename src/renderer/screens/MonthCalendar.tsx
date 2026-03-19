@@ -152,7 +152,7 @@ export function MonthCalendar() {
     const newDate = dateToTimestamp(date);
 
     // 마감일이 있으면 마감일 이후로 배치 차단
-    if (task.deadline && newDate > task.deadline) {
+    if (task.deadline && date > toDateStr(new Date(task.deadline))) {
       alert('마감일보다 늦은 날짜에 배치할 수 없어요.');
       return;
     }
