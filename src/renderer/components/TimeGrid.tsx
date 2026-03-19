@@ -10,7 +10,7 @@ import type { TimeBox } from '@shared/types';
 import { Sparkles } from 'lucide-react';
 
 // Work hours configuration
-export const WORK_START = 18; // slot 18 = 09:00
+export const WORK_START = 14; // slot 14 = 07:00
 export const WORK_END = 42;   // slot 42 = 21:00 (exclusive)
 const LUNCH_SLOTS = [24, 25]; // 12:00-13:00
 
