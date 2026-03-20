@@ -10,7 +10,7 @@
  * - 허용 앱 whitelist (false positive 방지)
  * - 토글 on/off (설정)
  */
-import { BrowserWindow, Notification, powerMonitor } from 'electron';
+import { BrowserWindow, powerMonitor, screen } from 'electron';
 import { execFile } from 'child_process';
 
 // ── Active Window (native addon — try-catch로 감싸서 크래시 방지) ──
@@ -25,11 +25,11 @@ try {
 }
 
 // ── 상수 ──
-const IDLE_SOFT_SEC = 180;   // 입력 정지 3분 → 부드러운 알림
-const IDLE_HARD_SEC = 300;   // 입력 정지 5분 → 단호한 알림
-const DISTRACT_SOFT_SEC = 60;  // 비허용 앱 1분 → 부드러운 알림
-const DISTRACT_HARD_SEC = 180; // 비허용 앱 3분 → 단호한 알림
-const IDLE_CHECK_MS = 10_000;  // idle 체크 10초 간격
+const IDLE_HARD_SEC = 180;       // 입력 정지 3분 → hard (중앙 오버레이)
+const IDLE_CRITICAL_SEC = 300;   // 입력 정지 5분 → critical (앱 최상단)
+const DISTRACT_HARD_SEC = 60;    // 비허용 앱 1분 → hard (중앙 오버레이)
+const DISTRACT_CRITICAL_SEC = 180; // 비허용 앱 3분 → critical (앱 최상단)
+const IDLE_CHECK_MS = 10_000;    // idle 체크 10초 간격
 
 // ── 기본 허용 앱 (false positive 방지) ──
 const DEFAULT_WHITELIST: string[] = [
@@ -89,16 +89,16 @@ interface FocusSession {
   taskTitle: string;
   startedAt: number;
   // idle 감지
-  idleSoftSent: boolean;
   idleHardSent: boolean;
+  idleCriticalSent: boolean;
   idleSupported: boolean;       // getSystemIdleTime 버그 여부
   idleEverNonZero: boolean;     // 한 번이라도 0이 아닌 값이 나왔는지
   // 활성 윈도우 감지
   activeWinWatchId: number | null;
   currentDistractionStart: number | null;
   currentDistractionApp: string | null;
-  distractSoftSent: boolean;
   distractHardSent: boolean;
+  distractCriticalSent: boolean;
   // 통계
   totalFocusMs: number;
   totalDistractionMs: number;
@@ -120,6 +120,9 @@ export interface FocusGuardStats {
   visibleApps: VisibleAppRecord[];  // 백그라운드에서 열려있던 비허용 앱 목록
 }
 
+/** 알림 강도 레벨 */
+type NotifyLevel = 'hard' | 'critical';
+
 export class FocusGuardService {
   private session: FocusSession | null = null;
   private idleTimer: ReturnType<typeof setInterval> | null = null;
@@ -127,6 +130,8 @@ export class FocusGuardService {
   private whitelist: Set<string> = new Set(DEFAULT_WHITELIST);
   private lockHandler: (() => void) | null = null;
   private unlockHandler: (() => void) | null = null;
+  private window: BrowserWindow | null = null;
+  private overlayWindow: BrowserWindow | null = null;
 
   /** 허용 앱 목록 설정 (설정에서 로드) */
   setWhitelist(apps: string[]): void {
@@ -134,9 +139,10 @@ export class FocusGuardService {
   }
 
   /** 집중 감시 시작 */
-  start(taskTitle: string, _win: BrowserWindow): void {
+  start(taskTitle: string, win: BrowserWindow): void {
     this.stop(); // 기존 세션 정리
 
+    this.window = win;
     const now = Date.now();
 
     // getSystemIdleTime 버그 검증: 3회 호출하여 모두 0이면 비활성화
@@ -154,15 +160,15 @@ export class FocusGuardService {
     this.session = {
       taskTitle,
       startedAt: now,
-      idleSoftSent: false,
       idleHardSent: false,
+      idleCriticalSent: false,
       idleSupported,
       idleEverNonZero: false,
       activeWinWatchId: null,
       currentDistractionStart: null,
       currentDistractionApp: null,
-      distractSoftSent: false,
       distractHardSent: false,
+      distractCriticalSent: false,
       totalFocusMs: 0,
       totalDistractionMs: 0,
       totalIdleMs: 0,
@@ -211,6 +217,10 @@ export class FocusGuardService {
     if (this.unlockHandler) powerMonitor.removeListener('unlock-screen', this.unlockHandler);
     this.lockHandler = null;
     this.unlockHandler = null;
+
+    // 오버레이 정리
+    this.closeOverlay();
+    this.window = null;
 
     // 마지막 시간 정산
     const now = Date.now();
@@ -299,8 +309,9 @@ export class FocusGuardService {
         });
         this.session.currentDistractionStart = null;
         this.session.currentDistractionApp = null;
-        this.session.distractSoftSent = false;
         this.session.distractHardSent = false;
+        this.session.distractCriticalSent = false;
+        this.closeOverlay();
       }
       this.session.lastFocusAt = now;
     } else {
@@ -310,8 +321,8 @@ export class FocusGuardService {
         this.session.totalFocusMs += now - this.session.lastFocusAt;
         this.session.currentDistractionStart = now;
         this.session.currentDistractionApp = appName;
-        this.session.distractSoftSent = false;
         this.session.distractHardSent = false;
+        this.session.distractCriticalSent = false;
       }
     }
   }
@@ -337,9 +348,9 @@ export class FocusGuardService {
         this.session.idleEverNonZero = true;
       }
 
-      // ── idle 시간 누적 (mortem P3 fix: 300초 초과분 유실 방지) ──
-      // IDLE_SOFT_SEC 이상이면 매 poll마다 증가분만큼 누적
-      if (idleSec >= IDLE_SOFT_SEC) {
+      // ── idle 시간 누적 (mortem P3 fix: 초과분 유실 방지) ──
+      // IDLE_HARD_SEC 이상이면 매 poll마다 증가분만큼 누적
+      if (idleSec >= IDLE_HARD_SEC) {
         const delta = idleSec - this.session.lastIdleAccumulatedSec;
         if (delta > 0) {
           this.session.totalIdleMs += delta * 1000;
@@ -347,44 +358,44 @@ export class FocusGuardService {
         }
       }
 
-      // ── 알림 ──
-      if (idleSec >= IDLE_HARD_SEC && !this.session.idleHardSent) {
-        this.notify(
+      // ── 알림 (2단계 에스컬레이션) ──
+      if (idleSec >= IDLE_CRITICAL_SEC && !this.session.idleCriticalSent) {
+        this.notify('critical',
+          '정말로 거기 계신가요?',
+          `${Math.floor(idleSec / 60)}분째 입력이 없어요. 타이머를 정지해주세요.`,
+        );
+        this.session.idleCriticalSent = true;
+      } else if (idleSec >= IDLE_HARD_SEC && !this.session.idleHardSent) {
+        this.notify('hard',
           '아직 거기 계신가요?',
           `${Math.floor(idleSec / 60)}분째 입력이 없어요. 잠시 쉬는 거라면 타이머를 정지해주세요.`,
         );
         this.session.idleHardSent = true;
-      } else if (idleSec >= IDLE_SOFT_SEC && !this.session.idleSoftSent) {
-        this.notify(
-          '잠깐 멈춰있네요',
-          `"${this.session.taskTitle}" 진행 중이에요. 생각 중이시라면 괜찮아요!`,
-        );
-        this.session.idleSoftSent = true;
       }
 
-      if (idleSec < IDLE_SOFT_SEC) {
-        this.session.idleSoftSent = false;
+      if (idleSec < IDLE_HARD_SEC) {
         this.session.idleHardSent = false;
-        this.session.lastIdleAccumulatedSec = 0;  // 활동 재개 → 리셋
+        this.session.idleCriticalSent = false;
+        this.session.lastIdleAccumulatedSec = 0;
       }
     }
 
-    // ── 비허용 앱 체류 시간 체크 ──
+    // ── 비허용 앱 체류 시간 체크 (2단계 에스컬레이션) ──
     if (this.session.currentDistractionStart) {
       const distractSec = (Date.now() - this.session.currentDistractionStart) / 1000;
 
-      if (distractSec >= DISTRACT_HARD_SEC && !this.session.distractHardSent) {
-        this.notify(
-          '돌아올 때가 됐어요!',
+      if (distractSec >= DISTRACT_CRITICAL_SEC && !this.session.distractCriticalSent) {
+        this.notify('critical',
+          '돌아와주세요!',
           `"${this.session.taskTitle}" 집중 중이었어요. ${Math.floor(distractSec / 60)}분째 다른 곳에 계세요.`,
         );
-        this.session.distractHardSent = true;
-      } else if (distractSec >= DISTRACT_SOFT_SEC && !this.session.distractSoftSent) {
-        this.notify(
+        this.session.distractCriticalSent = true;
+      } else if (distractSec >= DISTRACT_HARD_SEC && !this.session.distractHardSent) {
+        this.notify('hard',
           '잠깐 쉬는 건가요?',
           `"${this.session.taskTitle}" 타이머가 돌아가고 있어요. 준비되면 돌아와주세요.`,
         );
-        this.session.distractSoftSent = true;
+        this.session.distractHardSent = true;
       }
     }
 
@@ -460,10 +471,98 @@ export class FocusGuardService {
     this.session.lastFocusAt = Date.now();
   }
 
-  // ── 알림 ──
+  // ── 오버레이 창 관리 ──
 
-  private notify(title: string, body: string): void {
-    if (!Notification.isSupported()) return;
-    new Notification({ title, body, silent: false }).show();
+  private closeOverlay(): void {
+    if (this.overlayWindow && !this.overlayWindow.isDestroyed()) {
+      this.overlayWindow.close();
+    }
+    this.overlayWindow = null;
+  }
+
+  private showOverlay(title: string, body: string, mode: 'mini' | 'center'): void {
+    this.closeOverlay();
+
+    const display = screen.getPrimaryDisplay();
+    const { width: sw, height: sh } = display.workAreaSize;
+
+    const isMini = mode === 'mini';
+    const w = isMini ? 320 : 420;
+    const h = isMini ? 90 : 180;
+    const x = isMini ? sw - w - 20 : Math.round((sw - w) / 2);
+    const y = isMini ? 20 : Math.round((sh - h) / 2);
+
+    this.overlayWindow = new BrowserWindow({
+      width: w,
+      height: h,
+      x,
+      y,
+      frame: false,
+      transparent: true,
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      resizable: false,
+      focusable: !isMini,
+      webPreferences: { nodeIntegration: false, contextIsolation: true },
+    });
+
+    const autoClose = isMini ? 'setTimeout(()=>window.close(),5000);' : '';
+    const closeBtn = isMini ? '' : `<button onclick="window.close()" style="
+      margin-top:12px;padding:6px 24px;border:none;border-radius:6px;
+      background:#6366f1;color:#fff;font-size:13px;cursor:pointer;
+    ">돌아갈게요</button>`;
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:transparent;font-family:'Segoe UI',sans-serif;
+    display:flex;align-items:center;justify-content:center;height:100vh;
+    -webkit-app-region:no-drag;user-select:none}
+  .card{background:rgba(15,15,25,0.92);border:1px solid rgba(99,102,241,0.4);
+    border-radius:${isMini ? 12 : 16}px;padding:${isMini ? '12px 20px' : '24px 32px'};
+    text-align:center;backdrop-filter:blur(12px);
+    box-shadow:0 8px 32px rgba(0,0,0,0.5);max-width:${w - 20}px}
+  .title{color:#a5b4fc;font-size:${isMini ? 12 : 14}px;font-weight:600;margin-bottom:${isMini ? 4 : 8}px}
+  .body{color:#e2e8f0;font-size:${isMini ? 11 : 13}px;line-height:1.5}
+</style></head><body>
+<div class="card">
+  <div class="title">${title}</div>
+  <div class="body">${body}</div>
+  ${closeBtn}
+</div>
+<script>${autoClose}</script>
+</body></html>`;
+
+    this.overlayWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    this.overlayWindow.on('closed', () => { this.overlayWindow = null; });
+  }
+
+  // ── 3단계 에스컬레이션 알림 ──
+
+  private notify(level: NotifyLevel, title: string, body: string): void {
+    switch (level) {
+      case 'hard':
+        // 1단계: 작업표시줄 깜빡임 + 화면 중앙 오버레이 (클릭 닫기)
+        if (this.window && !this.window.isDestroyed()) {
+          this.window.flashFrame(true);
+        }
+        this.showOverlay(title, body, 'center');
+        break;
+
+      case 'critical':
+        // 2단계: 앱 최상단 끌어올림 + 화면 중앙 오버레이
+        this.showOverlay(title, body, 'center');
+        if (this.window && !this.window.isDestroyed()) {
+          this.window.setAlwaysOnTop(true);
+          this.window.show();
+          this.window.focus();
+          setTimeout(() => {
+            if (this.window && !this.window.isDestroyed()) {
+              this.window.setAlwaysOnTop(false);
+            }
+          }, 3000);
+        }
+        break;
+    }
   }
 }

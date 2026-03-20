@@ -11,6 +11,8 @@ import { ElapsedTimer } from '@renderer/components/ElapsedTimer';
 import { ProgressRing } from '@renderer/components/ProgressRing';
 import { TodayMindCard } from '@renderer/components/TodayMindCard';
 import { DayReviewCard, DeferredDetector } from '@renderer/components/DayReviewCard';
+import { FocusGuardCard } from '@renderer/components/FocusGuardCard';
+import type { FocusGuardStats } from '@renderer/components/FocusGuardCard';
 import { useTimeboxStore } from '@renderer/stores/timeboxStore';
 import { useTaskStore } from '@renderer/stores/taskStore';
 import { useDashboardStore } from '@renderer/stores/dashboardStore';
@@ -83,6 +85,7 @@ export function FocusDay() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [splitLeft, setSplitLeft] = useState(45); // Column 1 width %
   const [splitRight, setSplitRight] = useState(75); // Column 1+2 boundary %
+  const [focusGuardStats, setFocusGuardStats] = useState<FocusGuardStats | null>(null);
 
   const dragging = useRef<'left' | 'right' | null>(null);
 
@@ -265,7 +268,9 @@ export function FocusDay() {
       const api = getApi();
       if (api) {
         api.tasks.update(id, { status: 'pending' }).catch(console.error);
-        api.focusGuard.stop().catch(console.error);
+        api.focusGuard.stop().then((r: { stats?: FocusGuardStats }) => {
+          if (r?.stats) setFocusGuardStats(r.stats);
+        }).catch(console.error);
       }
       setSwitchedTaskIds((prev) => [...prev, id]);
     } else {
@@ -286,7 +291,9 @@ export function FocusDay() {
     const api = getApi();
     if (api) {
       api.tasks.update(id, { status: 'completed', progress: 100 }).catch(console.error);
-      api.focusGuard.stop().catch(console.error);
+      api.focusGuard.stop().then((r: { stats?: FocusGuardStats }) => {
+        if (r?.stats) setFocusGuardStats(r.stats);
+      }).catch(console.error);
     }
   }
 
@@ -296,7 +303,9 @@ export function FocusDay() {
     const api = getApi();
     if (api) {
       api.tasks.update(id, { status: 'deferred' }).catch(console.error);
-      api.focusGuard.stop().catch(console.error);
+      api.focusGuard.stop().then((r: { stats?: FocusGuardStats }) => {
+        if (r?.stats) setFocusGuardStats(r.stats);
+      }).catch(console.error);
     }
   }
 
@@ -634,6 +643,9 @@ export function FocusDay() {
               <p className="text-[10px] text-surface-400">지금까지 해낸 모든 것이에요!</p>
             </CardContent>
           </Card>
+
+          {/* 집중 감시 통계 */}
+          <FocusGuardCard stats={focusGuardStats} />
 
           {/* 오늘의 마음 (Cogito: 감사 + 내적동기) */}
           <TodayMindCard
