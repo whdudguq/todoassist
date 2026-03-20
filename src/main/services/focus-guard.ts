@@ -18,10 +18,16 @@ import { execFile } from 'child_process';
 let activeWindow: { subscribe: (cb: (win: any) => void, opts?: any) => number; unsubscribe: (id: number) => void } | null = null;
 try {
   const mod = require('@paymoapp/active-window');
-  activeWindow = mod.default ?? mod.ActiveWindow ?? mod;
-  console.log('[focusGuard] active-window loaded successfully');
+  const instance = mod.default ?? mod.ActiveWindow ?? mod;
+  // subscribe 메서드 존재 여부 검증
+  if (instance && typeof instance.subscribe === 'function') {
+    activeWindow = instance;
+    console.log('[focusGuard] active-window loaded, subscribe available');
+  } else {
+    console.warn('[focusGuard] active-window loaded but no subscribe method. Keys:', Object.keys(instance));
+  }
 } catch (e) {
-  console.warn('[focusGuard] active-window load failed (Layer 1 disabled):', e);
+  console.warn('[focusGuard] active-window load failed (Layer 1 disabled):', (e as Error).message);
 }
 
 // ── 상수 ──
@@ -258,7 +264,11 @@ export class FocusGuardService {
   // ── Active Window Watch ──
 
   private startActiveWindowWatch(): void {
-    if (!this.session || !activeWindow) return;
+    if (!this.session) return;
+    if (!activeWindow) {
+      console.warn('[focusGuard] Layer 1 skipped: active-window not loaded');
+      return;
+    }
 
     try {
       const watchId = activeWindow.subscribe(
@@ -271,8 +281,9 @@ export class FocusGuardService {
         },
       );
       this.session.activeWinWatchId = watchId;
-    } catch {
-      // native addon 초기화 실패 → graceful degradation
+      console.log('[focusGuard] Layer 1 active-window subscribe OK, watchId:', watchId);
+    } catch (e) {
+      console.warn('[focusGuard] Layer 1 subscribe failed:', (e as Error).message);
     }
   }
 
@@ -537,9 +548,11 @@ export class FocusGuardService {
     this.overlayWindow.on('closed', () => { this.overlayWindow = null; });
   }
 
-  // ── 3단계 에스컬레이션 알림 ──
+  // ── 2단계 에스컬레이션 알림 ──
 
   private notify(level: NotifyLevel, title: string, body: string): void {
+    console.log(`[focusGuard] notify: level=${level} title="${title}"`);
+
     switch (level) {
       case 'hard':
         // 1단계: 작업표시줄 깜빡임 + 화면 중앙 오버레이 (클릭 닫기)
