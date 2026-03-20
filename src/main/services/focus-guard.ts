@@ -114,6 +114,9 @@ interface FocusSession {
   lastFocusAt: number;
   // 백그라운드 열린 앱 감지 (듀얼 모니터)
   visibleApps: Map<string, VisibleAppRecord>;
+  visibleHardSent: boolean;
+  visibleCriticalSent: boolean;
+  visibleFirstDetectedAt: number | null;  // 비허용 앱 최초 감지 시각
   // lock 상태
   locked: boolean;
 }
@@ -182,6 +185,9 @@ export class FocusGuardService {
       distractions: [],
       lastFocusAt: now,
       visibleApps: new Map(),
+      visibleHardSent: false,
+      visibleCriticalSent: false,
+      visibleFirstDetectedAt: null,
       locked: false,
     };
 
@@ -440,6 +446,9 @@ export class FocusGuardService {
         if (err || !this.session) return;
 
         const lines = stdout.trim().split('\n').filter(Boolean);
+        let foundDistracting = false;
+        const distractingNames: string[] = [];
+
         for (const line of lines) {
           const sep = line.indexOf('|');
           if (sep === -1) continue;
@@ -450,12 +459,15 @@ export class FocusGuardService {
           // 허용 앱은 무시
           if (this.whitelist.has(app)) continue;
 
+          foundDistracting = true;
+          distractingNames.push(app);
+
           // 비허용 앱이 열려있음 → 기록
           const key = app;
           const existing = this.session.visibleApps.get(key);
           if (existing) {
             existing.detectedCount++;
-            existing.title = title; // 최신 제목으로 갱신
+            existing.title = title;
           } else {
             this.session.visibleApps.set(key, {
               app,
@@ -463,6 +475,36 @@ export class FocusGuardService {
               detectedCount: 1,
             });
           }
+        }
+
+        // ── 열린 비허용 앱 알림 (듀얼 모니터 대응) ──
+        if (foundDistracting && !this.session.currentDistractionStart) {
+          // Layer 1(포커스 전환)으로 이미 감지 중이면 중복 알림 방지
+          const now = Date.now();
+          if (!this.session.visibleFirstDetectedAt) {
+            this.session.visibleFirstDetectedAt = now;
+          }
+          const elapsedSec = (now - this.session.visibleFirstDetectedAt) / 1000;
+          const appList = [...new Set(distractingNames)].slice(0, 2).join(', ');
+
+          if (elapsedSec >= DISTRACT_CRITICAL_SEC && !this.session.visibleCriticalSent) {
+            this.notify('critical',
+              '비업무 앱이 열려있어요',
+              `${appList} 등이 ${Math.floor(elapsedSec / 60)}분째 화면에 열려있어요. 닫아주세요.`,
+            );
+            this.session.visibleCriticalSent = true;
+          } else if (elapsedSec >= DISTRACT_HARD_SEC && !this.session.visibleHardSent) {
+            this.notify('hard',
+              '비업무 앱이 열려있어요',
+              `${appList} 등이 화면에 열려있어요. 집중에 방해될 수 있어요.`,
+            );
+            this.session.visibleHardSent = true;
+          }
+        } else if (!foundDistracting) {
+          // 비허용 앱이 모두 닫힘 → 리셋
+          this.session.visibleFirstDetectedAt = null;
+          this.session.visibleHardSent = false;
+          this.session.visibleCriticalSent = false;
         }
       },
     );

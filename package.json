@@ -1,6 +1,6 @@
 {
   "name": "todoassist",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "AI 감정 안전 비서 데스크톱 앱",
   "main": "dist/main/main/index.js",
   "scripts": {
