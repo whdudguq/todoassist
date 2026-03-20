@@ -29,8 +29,12 @@ export function microStart(taskId: string): boolean {
 
   // 시작
   const api = getApi();
+  const task = tasks.find((t) => t.id === taskId);
   useTimerStore.getState().startTimer(taskId);
   useTaskStore.getState().updateTask(taskId, { status: 'in_progress' });
-  if (api) api.tasks.update(taskId, { status: 'in_progress' }).catch(console.error);
+  if (api) {
+    api.tasks.update(taskId, { status: 'in_progress' }).catch(console.error);
+    api.focusGuard.start(task?.title ?? '태스크').catch(console.error);
+  }
   return true;
 }

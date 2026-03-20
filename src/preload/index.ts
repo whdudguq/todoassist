@@ -63,6 +63,12 @@ const api = {
     chat: (message: string, context?: string) =>
       ipcRenderer.invoke(IPC_CHANNELS.AI.CHAT, message, context),
   },
+  focusGuard: {
+    start: (taskTitle: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.FOCUS_GUARD.START, taskTitle),
+    stop: () =>
+      ipcRenderer.invoke(IPC_CHANNELS.FOCUS_GUARD.STOP),
+  },
 };
 
 contextBridge.exposeInMainWorld('api', api);

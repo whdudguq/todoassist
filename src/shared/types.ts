@@ -175,4 +175,8 @@ export const IPC_CHANNELS = {
     SPLIT_TASK: 'ai:splitTask',
     CHAT: 'ai:chat',
   },
+  FOCUS_GUARD: {
+    START: 'focusGuard:start',
+    STOP: 'focusGuard:stop',
+  },
 } as const;

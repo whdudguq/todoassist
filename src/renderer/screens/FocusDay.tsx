@@ -263,7 +263,10 @@ export function FocusDay() {
       stopTimer(id);
       useTaskStore.getState().updateTask(id, { status: 'pending' });
       const api = getApi();
-      if (api) api.tasks.update(id, { status: 'pending' }).catch(console.error);
+      if (api) {
+        api.tasks.update(id, { status: 'pending' }).catch(console.error);
+        api.focusGuard.stop().catch(console.error);
+      }
       setSwitchedTaskIds((prev) => [...prev, id]);
     } else {
       // 일시정지 (여전히 in_progress, 다른 태스크 차단 유지)
@@ -281,14 +284,20 @@ export function FocusDay() {
     stopTimer(id);
     useTaskStore.getState().updateTask(id, { status: 'completed', progress: 100, completedAt: Date.now() });
     const api = getApi();
-    if (api) api.tasks.update(id, { status: 'completed', progress: 100 }).catch(console.error);
+    if (api) {
+      api.tasks.update(id, { status: 'completed', progress: 100 }).catch(console.error);
+      api.focusGuard.stop().catch(console.error);
+    }
   }
 
   function handleDefer(id: string) {
     stopTimer(id);
     useTaskStore.getState().updateTask(id, { status: 'deferred' });
     const api = getApi();
-    if (api) api.tasks.update(id, { status: 'deferred' }).catch(console.error);
+    if (api) {
+      api.tasks.update(id, { status: 'deferred' }).catch(console.error);
+      api.focusGuard.stop().catch(console.error);
+    }
   }
 
   const slotToTime = (slot: number) => {

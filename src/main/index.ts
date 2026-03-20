@@ -11,7 +11,8 @@
  * 6. Clean up DB on quit
  */
 
-import { app, BrowserWindow, dialog } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { IPC_CHANNELS } from '../shared/types';
 import { autoUpdater } from 'electron-updater';
 import path from 'path';
 import fs from 'fs';
@@ -50,6 +51,7 @@ import { DailyStatsService } from './services/daily-stats';
 import { ReflectionCrudService } from './services/reflection-crud';
 import { EncouragementService } from './services/encouragement';
 import { AnalyticsService } from './services/analytics';
+import { FocusGuardService } from './services/focus-guard';
 
 // IPC Handlers
 import { registerTaskHandlers } from './ipc/task-handlers';
@@ -245,6 +247,26 @@ app.whenReady().then(() => {
     debugLog('bootstrap: done');
     createWindow();
     debugLog('createWindow: called');
+
+    // Focus Guard IPC
+    const focusGuard = new FocusGuardService();
+    ipcMain.handle(IPC_CHANNELS.FOCUS_GUARD.START, (_e, taskTitle: string) => {
+      if (mainWindow) {
+        focusGuard.start(taskTitle, mainWindow);
+        debugLog(`[focusGuard] started: ${taskTitle}`);
+      }
+      return { ok: true };
+    });
+    ipcMain.handle(IPC_CHANNELS.FOCUS_GUARD.STOP, () => {
+      const stats = focusGuard.stop();
+      debugLog(`[focusGuard] stopped: ${JSON.stringify(stats)}`);
+      return { ok: true, stats };
+    });
+
+    // 앱 종료 시 Focus Guard 정리 (mortem: stop() 미호출 → 알림 폭탄 방지)
+    app.on('before-quit', () => {
+      focusGuard.stop();
+    });
 
     // Auto-updater: check for updates in packaged app
     if (app.isPackaged) {
