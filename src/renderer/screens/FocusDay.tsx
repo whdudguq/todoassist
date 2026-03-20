@@ -128,6 +128,16 @@ export function FocusDay() {
   const col2Width = `${splitRight - splitLeft}%`;
   const col3Width = `${100 - splitRight}%`;
 
+  // ── 앱 재시작 시 in_progress 태스크 복구 (타이머 없으면 pending으로) ──
+  useEffect(() => {
+    const api = getApi();
+    const stuckTasks = tasks.filter((t) => t.status === 'in_progress' && !timers[t.id]);
+    for (const t of stuckTasks) {
+      useTaskStore.getState().updateTask(t.id, { status: 'pending' });
+      if (api) api.tasks.update(t.id, { status: 'pending' }).catch(console.error);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── IPC: load data on mount (태스크는 AppShell에서 전역 로드) ──
   useEffect(() => {
     const api = getApi();
