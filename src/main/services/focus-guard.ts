@@ -17,11 +17,11 @@ import { execFile } from 'child_process';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let activeWindow: { subscribe: (cb: (win: any) => void, opts?: any) => number; unsubscribe: (id: number) => void } | null = null;
 try {
-  // default export는 인스턴스 (ActiveWindowClass)
   const mod = require('@paymoapp/active-window');
   activeWindow = mod.default ?? mod.ActiveWindow ?? mod;
-} catch {
-  // WSL2 dev 환경 등에서 native 모듈 로드 실패 시 graceful degradation
+  console.log('[focusGuard] active-window loaded successfully');
+} catch (e) {
+  console.warn('[focusGuard] active-window load failed (Layer 1 disabled):', e);
 }
 
 // ── 상수 ──
